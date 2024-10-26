@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
+    "reflect-metadata": "^0.2.2",
+    "routing-controllers": "^0.10.4",
     "telegraf": "^4.16.3",
     "ts-node": "^10.9.2",
     "ts-postgres": "^2.0.4",
