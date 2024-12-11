@@ -31,7 +31,7 @@ export class RoomService {
         instance.status = RoomStatus.Opened;
         const roomId: number = (await this.roomRepository.save(instance)).id;
 
-        const host: UserDto = await this.userService.getUser(createRoomDto.hostId);
+        const host: UserDto = await this.userService.getUser(createRoomDto.name);
         const playerInstance: CreatePlayerDto = {
             roomId: roomId, 
             userId: createRoomDto.hostId, 

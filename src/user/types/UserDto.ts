@@ -13,6 +13,11 @@ export class UserDto {
 
     @ApiProperty()
     @IsNotEmpty()
+    @MinLength(3)
+    password: string;
+
+    @ApiProperty()
+    @IsNotEmpty()
     @IsDate()
     createdAt: Date;
 }

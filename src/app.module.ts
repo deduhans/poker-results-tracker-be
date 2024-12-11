@@ -7,6 +7,7 @@ import { PaymentModule } from './payment/payment.module';
 import { PlayerModule } from './player/player.module';
 import entities from './typeorm';
 import { E2EModule } from './e2e/e2e.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { E2EModule } from './e2e/e2e.module';
     UserModule,
     PaymentModule,
     PlayerModule,
-    E2EModule
+    E2EModule,
+    AuthModule
   ],
   controllers: [],
   providers: [],

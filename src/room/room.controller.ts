@@ -6,12 +6,15 @@ import {
     ParseIntPipe,
     Patch,
     Post,
+    UseGuards,
 } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { ApiBody, ApiResponse } from '@nestjs/swagger';
 import { RoomDto } from './types/RoomDto';
 import { CreateRoomDto } from './types/CreateRoomDto';
+import { AuthenticatedGuard } from 'src/auth/authenticated.guard';
 
+@UseGuards(AuthenticatedGuard)
 @Controller('room')
 export class RoomController {
     constructor(private readonly roomService: RoomService) { }

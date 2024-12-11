@@ -8,6 +8,9 @@ export class User {
   @Column()
   username: string;
 
+  @Column()
+  password: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }

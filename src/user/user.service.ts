@@ -5,6 +5,7 @@ import { User } from 'src/typeorm/user.entity';
 import { plainToInstance } from 'class-transformer';
 import { CreateUserDto } from './types/CreateUserDto';
 import { UserDto } from './types/UserDto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -12,17 +13,21 @@ export class UserService {
 		@InjectRepository(User) private readonly userRepository: Repository<User>,
 	) { }
 
-	async getUser(id: number): Promise<UserDto> {
-		const user: User | null = await this.userRepository.findOneBy({id: id});
+	async getUser(username: string): Promise<UserDto> {
+		const user: User | null = await this.userRepository.findOneBy({username: username});
 
 		if(!user) {
-			throw new NotFoundException();
+			throw new NotFoundException('Could not find the user');
 		}
 
-		return plainToInstance(UserDto, user);
+		return user;
 	}
 
 	async createUser(user: CreateUserDto): Promise<UserDto> {
+		const saltOrRounds = 10;
+		const hashedPassword = await bcrypt.hash(user.password, saltOrRounds);
+		user.password = hashedPassword;
+
 		const instance: User = await this.userRepository.create(user);
 		const newUser: User = await this.userRepository.save(instance);
 
