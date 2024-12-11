@@ -1,16 +1,15 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
+import { Player } from './player.entity';
+import { BaseEntity } from './base.entity';
 
 @Entity()
-export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
-
+export class User extends BaseEntity {
   @Column()
   username: string;
 
   @Column()
-  password: string;
+  password: string
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @OneToMany(() => Player, (player) => player.user)
+  players: Player[]
 }

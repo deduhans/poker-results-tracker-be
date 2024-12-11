@@ -1,17 +1,24 @@
-import { PlayerRole } from 'src/player/types/PlayerRoleEnum';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { PlayerRoleEnum } from 'src/player/types/PlayerRoleEnum';
+import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { User } from './user.entity';
+import { Room } from './room.entity';
+import { BaseEntity } from './base.entity';
+import { Payment } from './payment.entity';
 
 @Entity()
-export class Player {
-    @PrimaryGeneratedColumn()
-    id: number;
+export class Player extends BaseEntity {
+    @ManyToOne(() => User, (user) => user.players)
+    user: User;
 
-    @Column({type: 'integer'})
-    roomId: number;
+    @ManyToOne(() => Room, (room) => room.players)
+    room: Room;
+
+    @OneToMany(() => Payment, (payment) => payment.player)
+    payments: Payment[]
 
     @Column({ type: 'varchar', length: 20 })
     name: string;
 
-    @Column({ type: 'varchar' })
-    role: PlayerRole;
+    @Column({ type: 'enum', enum: PlayerRoleEnum, default: PlayerRoleEnum.Player })
+    role: PlayerRoleEnum;
 }

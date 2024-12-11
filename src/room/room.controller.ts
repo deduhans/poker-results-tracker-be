@@ -12,6 +12,8 @@ import { RoomService } from './room.service';
 import { ApiBody, ApiResponse } from '@nestjs/swagger';
 import { RoomDto } from './types/RoomDto';
 import { CreateRoomDto } from './types/CreateRoomDto';
+import { Room } from 'src/typeorm';
+import { plainToInstance } from 'class-transformer';
 import { AuthenticatedGuard } from 'src/auth/authenticated.guard';
 
 @UseGuards(AuthenticatedGuard)
@@ -20,7 +22,7 @@ export class RoomController {
     constructor(private readonly roomService: RoomService) { }
 
     @Get()
-    @ApiResponse({ status: 200, type: RoomDto })
+    @ApiResponse({ status: 200, type: [RoomDto] })
     async getRoom(): Promise<RoomDto[]> {
         return await this.roomService.getAll();
     }
@@ -28,19 +30,22 @@ export class RoomController {
     @Get(':id')
     @ApiResponse({ status: 200, type: RoomDto })
     async findRoomById(@Param('id', ParseIntPipe) id: number): Promise<RoomDto> {
-        return await this.roomService.findById(id);
+        const room: Room = await this.roomService.findById(id);
+        return plainToInstance(RoomDto, room);
     }
 
     @Post('create')
     @ApiBody({ type: CreateRoomDto })
     @ApiResponse({ status: 201, type: RoomDto })
     async createRoom(@Body() createRoomDto: CreateRoomDto): Promise<RoomDto> {
-        return await this.roomService.create(createRoomDto);
+        const room: Room = await this.roomService.create(createRoomDto);
+        return plainToInstance(RoomDto, room);
     }
 
     @Patch('close/:id')
     @ApiResponse({ status: 204, type: RoomDto })
     async closeRoom(@Param('id', ParseIntPipe) id: number): Promise<RoomDto> {
-        return await this.roomService.close(id);
+        const room: Room = await this.roomService.close(id);
+        return plainToInstance(RoomDto, room);
     }
 }

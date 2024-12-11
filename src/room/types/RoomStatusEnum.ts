@@ -1,4 +1,4 @@
-export enum RoomStatus {
+export enum RoomStatusEnum {
     Opened = 'opened',
     Closed = 'closed'
 }

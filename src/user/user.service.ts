@@ -14,10 +14,20 @@ export class UserService {
 	) { }
 
 	async getUser(username: string): Promise<UserDto> {
-		const user: User | null = await this.userRepository.findOneBy({username: username});
+		const user: User | null = await this.userRepository.findOneBy({ username: username });
 
-		if(!user) {
-			throw new NotFoundException('Could not find the user');
+		if (!user) {
+			throw new NotFoundException("Could not find the user");
+		}
+
+		return user;
+	}
+
+	async getUserById(id: number): Promise<User> {
+		const user: User | null = await this.userRepository.findOneBy({ id: id });
+
+		if (!user) {
+			throw new NotFoundException("Could not find the user");
 		}
 
 		return user;
