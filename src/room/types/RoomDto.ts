@@ -1,16 +1,12 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsDate, IsInt, IsNotEmpty, IsString } from "class-validator";
-import { RoomStatus } from "./RoomStatusEnum";
+import { IsArray, IsDate, IsEnum, IsInt, IsNotEmpty, IsString } from "class-validator";
+import { RoomStatusEnum } from "./RoomStatusEnum";
 import { PlayerDto } from "src/player/types/PlayerDto";
 
 export class RoomDto {
     @ApiProperty()
     @IsInt()
     id: number;
-
-    @ApiProperty()
-    @IsInt()
-    hostId: number;
 
     @ApiProperty()
     @IsString()
@@ -22,11 +18,12 @@ export class RoomDto {
     exchange: number;
 
     @ApiProperty()
-    @IsString()
+    @IsEnum({ type: RoomStatusEnum })
     @IsNotEmpty()
-    status: RoomStatus;
+    status: RoomStatusEnum;
 
-    @ApiProperty({type: [PlayerDto]})
+    @ApiProperty({ type: [PlayerDto] })
+    @IsArray()
     players: PlayerDto[]
 
     @ApiProperty()

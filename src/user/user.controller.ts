@@ -19,7 +19,7 @@ export class UserController {
 
   @UseGuards(LocalAuthGuard)
   @Post('/login')
-  @ApiBody({type: CreateUserDto})
+  @ApiBody({ type: CreateUserDto })
   async login(@Request() req): Promise<any> {
     return {
       User: req.user,

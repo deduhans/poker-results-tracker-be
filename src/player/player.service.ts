@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Player } from 'src/typeorm/player.entity';
 import { Repository } from 'typeorm';
@@ -6,7 +6,8 @@ import { plainToInstance } from 'class-transformer';
 import { Payment } from 'src/typeorm';
 import { PlayerDto } from './types/PlayerDto';
 import { CreatePlayerDto } from './types/CreatePlayerDto';
-import { PlayerRole } from './types/PlayerRoleEnum';
+import { PlayerRoleEnum } from './types/PlayerRoleEnum';
+import { ChangePlayerRole } from './types/ChangePlayerRole';
 
 @Injectable()
 export class PlayerService {
@@ -15,38 +16,32 @@ export class PlayerService {
         @InjectRepository(Payment) private readonly paymentRepository: Repository<Payment>,
     ) { }
 
-    async getPlayer(id: number): Promise<PlayerDto> {
-        const player = await this.playerRepository.findOneBy({ id: id });
-        return plainToInstance(PlayerDto, player);
-    }
+    async getPlayerById(id: number): Promise<Player> {
+        const player: Player | null = await this.playerRepository.findOneBy({ id: id });
 
-    async getPlayersByRoom(roomId: number): Promise<PlayerDto[]> {
-        const players: Player[] = await this.playerRepository.findBy({ roomId: roomId });
-
-        const result: PlayerDto[] = plainToInstance(PlayerDto, players);
-
-        for (const key in result) {
-            if (Object.prototype.hasOwnProperty.call(result, key)) {
-                const element = result[key];
-                element.payments = await this.paymentRepository.findBy({playerId: element.id});
-            }
+        if (!player) {
+            throw new NotFoundException('Could not find player by id: ' + id);
         }
 
-        return result;
+        return player;
     }
 
-    async createPlayer(player: CreatePlayerDto): Promise<PlayerDto> {
-        const playersInRoom: Player[] = await this.playerRepository.findBy({roomId: player.roomId});
+    async createPlayer(player: CreatePlayerDto): Promise<Player> {
         const instance: Player = await this.playerRepository.create(player);
-
-        if(playersInRoom.length === 0) {
-            instance.role = PlayerRole.Host;
-        } else {
-            instance.role = PlayerRole.Player;
-        }
-
         const newPlayer: Player = await this.playerRepository.save(instance);
 
-        return plainToInstance(PlayerDto, newPlayer);
+        return newPlayer;
+    }
+
+    async changeRole(changePlayerRole: ChangePlayerRole): Promise<void> {
+        let player: Player = await this.getPlayerById(changePlayerRole.playerId);
+
+        if (player.role === PlayerRoleEnum.Host) {
+            throw new InternalServerErrorException('Colud not change host role.')
+        } else if (player.role === changePlayerRole.role) {
+            return;
+        }
+
+        await this.playerRepository.update({ id: changePlayerRole.playerId }, { role: changePlayerRole.role });
     }
 }

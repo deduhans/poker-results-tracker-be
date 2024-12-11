@@ -1,23 +1,19 @@
-import { IsDate } from 'class-validator';
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany } from 'typeorm';
+import { Player } from './player.entity';
+import { BaseEntity } from './base.entity';
+import { RoomStatusEnum } from 'src/room/types/RoomStatusEnum';
 
 @Entity()
-export class Room {
-    @PrimaryGeneratedColumn()
-    id: number;
+export class Room extends BaseEntity {
+    @OneToMany(() => Player, (player) => player.room)
+    players: Player[];
 
-    @Column({ type: 'int' })
-    hostId: number;
-
-    @Column({type: 'varchar', length: 20})
+    @Column({ type: 'varchar', length: 20 })
     name: string;
 
     @Column({ type: 'int' })
     exchange: number;
 
-    @Column({ type: 'varchar', length: 20 })
-    status: string;
-
-    @CreateDateColumn()
-    createdAt: Date
+    @Column({ type: 'enum', enum: RoomStatusEnum, default: RoomStatusEnum.Opened })
+    status: RoomStatusEnum;
 }
