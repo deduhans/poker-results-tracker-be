@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/typeorm/user.entity';
@@ -17,7 +17,7 @@ export class UserService {
 		const user: User | null = await this.userRepository.findOneBy({ username: username });
 
 		if (!user) {
-			throw new NotFoundException("Could not find the user");
+			throw new UnauthorizedException('Could not find the user: ' + username)
 		}
 
 		return user;
@@ -27,13 +27,17 @@ export class UserService {
 		const user: User | null = await this.userRepository.findOneBy({ id: id });
 
 		if (!user) {
-			throw new NotFoundException("Could not find the user");
+			throw new UnauthorizedException('Could not find the user by id: ' + id)
 		}
 
 		return user;
 	}
 
 	async createUser(user: CreateUserDto): Promise<UserDto> {
+		if (await this.isUserExists(user.username)) {
+			throw new ConflictException('User already exist');
+		}
+
 		const saltOrRounds = 10;
 		const hashedPassword = await bcrypt.hash(user.password, saltOrRounds);
 		user.password = hashedPassword;
@@ -42,5 +46,10 @@ export class UserService {
 		const newUser: User = await this.userRepository.save(instance);
 
 		return plainToInstance(UserDto, newUser);
+	}
+
+	private async isUserExists(username: string): Promise<boolean> {
+		const user = await this.userRepository.findOneBy({ username: username });
+		return user ? true : false;
 	}
 }

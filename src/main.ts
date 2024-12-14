@@ -3,9 +3,11 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as session from "express-session"
 import * as passport from "passport";
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useGlobalPipes(new ValidationPipe());
   const options = new DocumentBuilder()
     .setTitle('Your API Title')
     .setDescription('Your API description')

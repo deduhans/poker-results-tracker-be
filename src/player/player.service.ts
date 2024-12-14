@@ -1,19 +1,21 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Player } from 'src/typeorm/player.entity';
 import { Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Payment } from 'src/typeorm';
+import { Payment, Room, User } from 'src/typeorm';
 import { PlayerDto } from './types/PlayerDto';
 import { CreatePlayerDto } from './types/CreatePlayerDto';
 import { PlayerRoleEnum } from './types/PlayerRoleEnum';
 import { ChangePlayerRole } from './types/ChangePlayerRole';
+import { RoomService } from 'src/room/room.service';
 
 @Injectable()
 export class PlayerService {
     constructor(
         @InjectRepository(Player) private readonly playerRepository: Repository<Player>,
-        @InjectRepository(Payment) private readonly paymentRepository: Repository<Payment>,
+        @InjectRepository(Room) private readonly roomRepository: Repository<Room>,
+        @InjectRepository(User) private readonly userRepository: Repository<User>,
     ) { }
 
     async getPlayerById(id: number): Promise<Player> {
@@ -29,6 +31,21 @@ export class PlayerService {
     async createPlayer(player: CreatePlayerDto): Promise<Player> {
         const instance: Player = await this.playerRepository.create(player);
         const newPlayer: Player = await this.playerRepository.save(instance);
+
+        const room = await this.roomRepository.findOne({where: {id: player.roomId}, relations: ['players']});
+        const user = await this.userRepository.findOne({where: {id: player.userId}});
+
+        if(!room) {
+            throw new NotFoundException('Could not find room by id: ' + player.roomId);
+        } else if(!user) {
+            throw new NotFoundException('Could not find user by id: ' + player.userId);
+        }
+
+        room.players.push(newPlayer);
+        await this.roomRepository.save(room);
+
+        user.players.push(newPlayer);
+        await this.userRepository.save(user);
 
         return newPlayer;
     }
