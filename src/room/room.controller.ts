@@ -4,8 +4,8 @@ import {
     Get,
     Param,
     ParseIntPipe,
-    Patch,
     Post,
+    Put,
     UseGuards,
 } from '@nestjs/common';
 import { RoomService } from './room.service';
@@ -16,8 +16,8 @@ import { Room } from 'src/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { AuthenticatedGuard } from 'src/auth/authenticated.guard';
 
-@UseGuards(AuthenticatedGuard)
-@Controller('room')
+//@UseGuards(AuthenticatedGuard)
+@Controller('rooms')
 export class RoomController {
     constructor(private readonly roomService: RoomService) { }
 
@@ -34,7 +34,7 @@ export class RoomController {
         return plainToInstance(RoomDto, room);
     }
 
-    @Post('create')
+    @Post()
     @ApiBody({ type: CreateRoomDto })
     @ApiResponse({ status: 201, type: RoomDto })
     async createRoom(@Body() createRoomDto: CreateRoomDto): Promise<RoomDto> {
@@ -42,7 +42,7 @@ export class RoomController {
         return plainToInstance(RoomDto, room);
     }
 
-    @Patch('close/:id')
+    @Put('close/:id')
     @ApiResponse({ status: 204, type: RoomDto })
     async closeRoom(@Param('id', ParseIntPipe) id: number): Promise<RoomDto> {
         const room: Room = await this.roomService.close(id);

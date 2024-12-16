@@ -20,7 +20,7 @@ export class RoomService {
     ) { }
 
     async getAll(): Promise<RoomDto[]> {
-        const rooms: Room[] = await this.roomRepository.find();
+        const rooms: Room[] = await this.roomRepository.find({ relations: ['players'] });
 
         return plainToInstance(RoomDto, rooms);
     }
@@ -44,11 +44,13 @@ export class RoomService {
     }
 
     async findById(id: number): Promise<Room> {
-        const room = await this.roomRepository.findOneBy({ id: id });
+        const room = await this.roomRepository.findOne({ where: { id: id }, relations: { players: true } });
 
         if (!room) {
             throw new NotFoundException('Could not find the room by id: ' + id);
         }
+
+        room.players.push();
 
         return room;
     }
