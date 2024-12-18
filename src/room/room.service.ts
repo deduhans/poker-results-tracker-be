@@ -20,19 +20,20 @@ export class RoomService {
     ) { }
 
     async getAll(): Promise<RoomDto[]> {
-        const rooms: Room[] = await this.roomRepository.find({ relations: ['players'] });
+        const rooms: Room[] = await this.roomRepository.find();
 
         return plainToInstance(RoomDto, rooms);
     }
 
     async create(createRoomDto: CreateRoomDto): Promise<Room> {
+        const host: User = await this.userService.getUserById(createRoomDto.hostId);
+        
         const instance: Room = await this.roomRepository.create(createRoomDto);
         const roomId: number = (await this.roomRepository.save(instance)).id;
 
-        const host: User = await this.userService.getUserById(createRoomDto.hostId);
         const playerInstance: CreatePlayerDto = {
             roomId: roomId,
-            userId: createRoomDto.hostId,
+            userId: host.id,
             name: host.username
         };
         const player = await this.playerService.createPlayer(playerInstance);

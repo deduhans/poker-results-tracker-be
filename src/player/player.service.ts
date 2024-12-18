@@ -33,19 +33,17 @@ export class PlayerService {
         const newPlayer: Player = await this.playerRepository.save(instance);
 
         const room = await this.roomRepository.findOne({where: {id: player.roomId}, relations: ['players']});
-        const user = await this.userRepository.findOne({where: {id: player.userId}});
 
         if(!room) {
             throw new NotFoundException('Could not find room by id: ' + player.roomId);
-        } else if(!user) {
-            throw new NotFoundException('Could not find user by id: ' + player.userId);
-        }
+        } 
 
         room.players.push(newPlayer);
         await this.roomRepository.save(room);
 
-        user.players.push(newPlayer);
-        await this.userRepository.save(user);
+        if(player.userId) {
+            await this.assignToUser(newPlayer, player.userId);
+        }
 
         return newPlayer;
     }
@@ -60,5 +58,16 @@ export class PlayerService {
         }
 
         await this.playerRepository.update({ id: changePlayerRole.playerId }, { role: changePlayerRole.role });
+    }
+
+    private async assignToUser(player: Player, userId: number): Promise<void> {
+        const user = await this.userRepository.findOne({where: {id: userId}, relations: ['players']});
+        
+        if(!user) {
+            throw new NotFoundException('Could not find user by id: ' + userId);
+        }
+
+        user.players.push(player);
+        await this.userRepository.save(user);
     }
 }

@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsNumber, MinLength } from "class-validator";
+import { IsNotEmpty, IsNumber, IsOptional, MinLength } from "class-validator";
 
 export class CreatePlayerDto {
     @ApiProperty()
@@ -8,9 +8,9 @@ export class CreatePlayerDto {
     roomId: number;
 
     @ApiProperty()
-    @IsNotEmpty()
+    @IsOptional()
     @IsNumber()
-    userId: number
+    userId: number | null
 
     @ApiProperty()
     @IsNotEmpty()

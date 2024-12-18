@@ -8,7 +8,7 @@ import { Payment } from './payment.entity';
 @Entity()
 export class Player extends BaseEntity {
     @ManyToOne(() => User, (user) => user.players)
-    user: User;
+    user?: User;
 
     @ManyToOne(() => Room, (room) => room.players)
     room: Room;
