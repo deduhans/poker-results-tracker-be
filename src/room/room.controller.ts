@@ -16,7 +16,7 @@ import { Room } from 'src/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { AuthenticatedGuard } from 'src/auth/authenticated.guard';
 
-//@UseGuards(AuthenticatedGuard)
+@UseGuards(AuthenticatedGuard)
 @Controller('rooms')
 export class RoomController {
     constructor(private readonly roomService: RoomService) { }

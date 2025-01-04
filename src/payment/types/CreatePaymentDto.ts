@@ -10,12 +10,10 @@ export class CreatePaymentDto {
 
     @ApiProperty()
     @IsNotEmpty()
-    @MinLength(3)
     playerId: number;
 
     @ApiProperty()
     @IsNotEmpty()
-    @MinLength(3)
     amount: number;
 
     @ApiProperty()

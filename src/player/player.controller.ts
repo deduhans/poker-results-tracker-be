@@ -7,7 +7,7 @@ import { Player } from 'src/typeorm/player.entity';
 import { plainToInstance } from 'class-transformer';
 import { AuthenticatedGuard } from 'src/auth/authenticated.guard';
 
-//@UseGuards(AuthenticatedGuard)
+@UseGuards(AuthenticatedGuard)
 @Controller('players')
 export class PlayerController {
     constructor(private readonly playerService: PlayerService) { }

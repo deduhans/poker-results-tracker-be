@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as session from "express-session"
 import * as passport from "passport";
 import { ValidationPipe } from '@nestjs/common';
+import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -29,7 +30,12 @@ async function bootstrap() {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  app.enableCors();
+  const corsOptions: CorsOptions = {
+    origin: 'http://localhost:5173',
+    credentials: true,
+  };
+
+  app.enableCors(corsOptions);
   await app.listen(process.env.NEST_PORT || 3000);
 }
 bootstrap();

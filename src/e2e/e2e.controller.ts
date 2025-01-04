@@ -1,6 +1,8 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, UseGuards } from "@nestjs/common";
 import { E2EService } from "./e2e.service";
+import { AuthenticatedGuard } from "src/auth/authenticated.guard";
 
+@UseGuards(AuthenticatedGuard)
 @Controller('e2e')
 export class E2EController {
     constructor(private readonly e2eService: E2EService) { }
