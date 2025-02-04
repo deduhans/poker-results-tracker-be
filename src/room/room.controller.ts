@@ -15,6 +15,7 @@ import { CreateRoomDto } from './types/CreateRoomDto';
 import { Room } from 'src/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { AuthenticatedGuard } from 'src/auth/authenticated.guard';
+import { PlayerResultDto } from 'src/player/types/PlayerResult';
 
 @UseGuards(AuthenticatedGuard)
 @Controller('rooms')
@@ -43,9 +44,10 @@ export class RoomController {
     }
 
     @Put('close/:id')
+    @ApiBody({ type: [PlayerResultDto] })
     @ApiResponse({ status: 204, type: RoomDto })
-    async closeRoom(@Param('id', ParseIntPipe) id: number): Promise<RoomDto> {
-        const room: Room = await this.roomService.close(id);
+    async closeRoom(@Param('id', ParseIntPipe) id: number, @Body() playersResults: PlayerResultDto[]): Promise<RoomDto> {
+        const room: Room = await this.roomService.close(id, playersResults);
         return plainToInstance(RoomDto, room);
     }
 }
