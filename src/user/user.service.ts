@@ -34,6 +34,8 @@ export class UserService {
 	}
 
 	async createUser(user: CreateUserDto): Promise<UserDto> {
+		user.username = user.username.toLowerCase();
+
 		if (await this.isUserExists(user.username)) {
 			throw new ConflictException('User already exist');
 		}

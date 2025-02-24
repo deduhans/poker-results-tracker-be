@@ -9,9 +9,14 @@ import entities from './typeorm';
 import { E2EModule } from './e2e/e2e.module';
 import { AuthModule } from './auth/auth.module';
 
+const ENV = process.env.NODE_ENV;
+
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }), 
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: `./env/.env.${ENV}`
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -37,4 +42,4 @@ import { AuthModule } from './auth/auth.module';
   providers: [],
 })
 
-export class AppModule {}
+export class AppModule { }

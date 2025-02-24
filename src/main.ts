@@ -7,6 +7,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
 async function bootstrap() {
+  console.log(`http://${process.env.CLIENT_HOST}:${process.env.CLIENT_PORT}`)
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe());
   const options = new DocumentBuilder()
@@ -22,16 +23,20 @@ async function bootstrap() {
 
   app.use(
     session({
-      secret: "keyboard",
+      secret: `${process.env.PASSPORT_SECRET}`,
       resave: false,
       saveUninitialized: false,
+      cookie: {
+        maxAge: 18000000 // 5 hours
+      }
     })
   );
   app.use(passport.initialize());
   app.use(passport.session());
 
   const corsOptions: CorsOptions = {
-    origin: 'http://localhost:5173',
+    origin: `http://${process.env.CLIENT_HOST}:${process.env.CLIENT_PORT}`,
+    //origin: `http://localhost:3001`,
     credentials: true,
   };
 
