@@ -17,5 +17,13 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-  }
+    "paths": {
+      "@app/*": ["src/*"],
+      "@test/*": ["test/*"],
+      "@entities/*": ["src/typeorm/*"],
+      "@common/*": ["src/common/*"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

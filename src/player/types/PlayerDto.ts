@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsDate, IsNotEmpty, IsNumber, MinLength } from "class-validator";
-import { PaymentDto } from "src/payment/types/PaymentDto";
-import { PlayerRoleEnum } from "./PlayerRoleEnum";
+import { PaymentDto } from "@app/payment/types/PaymentDto";
+import { PlayerRoleEnum } from "@app/player/types/PlayerRoleEnum";
 
 export class PlayerDto {
     @ApiProperty()

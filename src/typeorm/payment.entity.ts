@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne } from 'typeorm';
-import { BaseEntity } from './base.entity';
-import { Player } from './player.entity';
-import { PaymentTypeEnum } from 'src/payment/types/PaymentTypeEnum';
+import { BaseEntity } from '@entities/base.entity';
+import { Player } from '@entities/player.entity';
+import { PaymentTypeEnum } from '@app/payment/types/PaymentTypeEnum';
 
 @Entity()
 export class Payment extends BaseEntity {

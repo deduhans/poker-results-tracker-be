@@ -4,12 +4,12 @@ import {
     Post,
     UseGuards
 } from '@nestjs/common';
-import { PaymentService } from './payment.service';
+import { PaymentService } from '@app/payment/payment.service';
 import { ApiBody, ApiResponse } from '@nestjs/swagger';
-import { CreatePaymentDto } from './types/CreatePaymentDto';
-import { PaymentDto } from './types/PaymentDto';
+import { CreatePaymentDto } from '@app/payment/types/CreatePaymentDto';
+import { PaymentDto } from '@app/payment/types/PaymentDto';
 import { plainToInstance } from 'class-transformer';
-import { AuthenticatedGuard } from 'src/auth/authenticated.guard';
+import { AuthenticatedGuard } from '@app/auth/authenticated.guard';
 
 @UseGuards(AuthenticatedGuard)
 @Controller('payments')

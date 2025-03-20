@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsEnum, IsNotEmpty, Min, MinLength } from "class-validator";
-import { PaymentTypeEnum } from "./PaymentTypeEnum";
+import { PaymentTypeEnum } from "@app/payment/types/PaymentTypeEnum";
 
 export class CreatePaymentDto {
     @ApiProperty()

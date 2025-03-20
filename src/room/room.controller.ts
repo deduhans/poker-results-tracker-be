@@ -1,3 +1,4 @@
+
 import {
     Body,
     Controller,
@@ -8,14 +9,14 @@ import {
     Put,
     UseGuards,
 } from '@nestjs/common';
-import { RoomService } from './room.service';
+import { RoomService } from '@app/room/room.service';
 import { ApiBody, ApiResponse } from '@nestjs/swagger';
-import { RoomDto } from './types/RoomDto';
-import { CreateRoomDto } from './types/CreateRoomDto';
-import { Room } from 'src/typeorm';
+import { RoomDto } from '@app/room/types/RoomDto';
+import { CreateRoomDto } from '@app/room/types/CreateRoomDto';
+import { Room } from '@entities/room.entity';
 import { plainToInstance } from 'class-transformer';
-import { AuthenticatedGuard } from 'src/auth/authenticated.guard';
-import { PlayerResultDto } from 'src/player/types/PlayerResult';
+import { AuthenticatedGuard } from '@app/auth/authenticated.guard';
+import { PlayerResultDto } from '@app/player/types/PlayerResult';
 
 @UseGuards(AuthenticatedGuard)
 @Controller('rooms')

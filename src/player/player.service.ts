@@ -1,14 +1,13 @@
 import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Player } from 'src/typeorm/player.entity';
 import { Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Payment, Room, User } from 'src/typeorm';
-import { PlayerDto } from './types/PlayerDto';
-import { CreatePlayerDto } from './types/CreatePlayerDto';
-import { PlayerRoleEnum } from './types/PlayerRoleEnum';
-import { ChangePlayerRole } from './types/ChangePlayerRole';
-import { RoomService } from 'src/room/room.service';
+import { Player, Room, User } from '@entities/index';
+import { PlayerDto } from '@app/player/types/PlayerDto';
+import { CreatePlayerDto } from '@app/player/types/CreatePlayerDto';
+import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
+import { ChangePlayerRole } from '@app/player/types/ChangePlayerRole';
+import { RoomService } from '@app/room/room.service';
 
 @Injectable()
 export class PlayerService {
@@ -32,16 +31,16 @@ export class PlayerService {
         const instance: Player = await this.playerRepository.create(player);
         const newPlayer: Player = await this.playerRepository.save(instance);
 
-        const room = await this.roomRepository.findOne({where: {id: player.roomId}, relations: ['players']});
+        const room = await this.roomRepository.findOne({ where: { id: player.roomId }, relations: ['players'] });
 
-        if(!room) {
+        if (!room) {
             throw new NotFoundException('Could not find room by id: ' + player.roomId);
-        } 
+        }
 
         room.players.push(newPlayer);
         await this.roomRepository.save(room);
 
-        if(player.userId) {
+        if (player.userId) {
             await this.assignToUser(newPlayer, player.userId);
         }
 
@@ -61,9 +60,9 @@ export class PlayerService {
     }
 
     private async assignToUser(player: Player, userId: number): Promise<void> {
-        const user = await this.userRepository.findOne({where: {id: userId}, relations: ['players']});
-        
-        if(!user) {
+        const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['players'] });
+
+        if (!user) {
             throw new NotFoundException('Could not find user by id: ' + userId);
         }
 

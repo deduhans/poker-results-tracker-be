@@ -1,46 +1,73 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from '@app/app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as session from "express-session"
 import * as passport from "passport";
 import { ValidationPipe } from '@nestjs/common';
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
+function validateEnv() {
+  const required = ['PASSPORT_SECRET', 'NEST_PORT', 'NEST_HOST', 'CLIENT_HOST', 'CLIENT_PORT'];
+  const missing = required.filter(key => !process.env[key]);
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
 async function bootstrap() {
-  console.log(`http://${process.env.CLIENT_HOST}:${process.env.CLIENT_PORT}`)
+  validateEnv();
   const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(new ValidationPipe());
+
+  // Global Validation Pipe
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+  }));
+
+  // Swagger Setup
   const options = new DocumentBuilder()
-    .setTitle('Your API Title')
-    .setDescription('Your API description')
+    .setTitle('Poker Results Tracker API')
+    .setDescription('API for tracking poker game results')
     .setVersion('1.0')
     .addServer(`http://${process.env.NEST_HOST}:${process.env.NEST_PORT}/`, 'Local environment')
-    .addTag('Your API Tag')
     .build();
 
   const document = SwaggerModule.createDocument(app, options);
-  SwaggerModule.setup('swagger', app, document as any);
+  SwaggerModule.setup('api', app, document);
+
+  // Session Setup
+  const sessionSecret = process.env.PASSPORT_SECRET;
+  if (!sessionSecret) {
+    throw new Error('PASSPORT_SECRET is required');
+  }
 
   app.use(
     session({
-      secret: `${process.env.PASSPORT_SECRET}`,
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
-        maxAge: 18000000 // 5 hours
+        maxAge: 5 * 60 * 60 * 1000, // 5 hours
+        secure: false, // Set to true in production with HTTPS
       }
     })
   );
+
+  // Passport Setup
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // CORS Setup
   const corsOptions: CorsOptions = {
     origin: `http://${process.env.CLIENT_HOST}:${process.env.CLIENT_PORT}`,
-    //origin: `http://localhost:3001`,
     credentials: true,
   };
-
   app.enableCors(corsOptions);
-  await app.listen(process.env.NEST_PORT || 3000);
+
+  // Start Server
+  await app.listen(parseInt(`${process.env.NEST_PORT}`) || 3000, '0.0.0.0');
+  console.log(`Application is running on: http://${process.env.NEST_HOST}:${process.env.NEST_PORT}`);
 }
+
 bootstrap();

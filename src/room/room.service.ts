@@ -1,19 +1,19 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Room, User } from 'src/typeorm';
+import { Room, User } from '@entities/index';
 import { Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { PlayerService } from 'src/player/player.service';
-import { UserService } from 'src/user/user.service';
-import { RoomDto } from './types/RoomDto';
-import { CreateRoomDto } from './types/CreateRoomDto';
-import { RoomStatusEnum } from './types/RoomStatusEnum';
-import { CreatePlayerDto } from 'src/player/types/CreatePlayerDto';
-import { PlayerRoleEnum } from 'src/player/types/PlayerRoleEnum';
-import { PaymentTypeEnum } from 'src/payment/types/PaymentTypeEnum';
-import { PaymentService } from 'src/payment/payment.service';
-import { CreatePaymentDto } from 'src/payment/types/CreatePaymentDto';
-import { PlayerResultDto } from 'src/player/types/PlayerResult';
+import { PlayerService } from '@app/player/player.service';
+import { UserService } from '@app/user/user.service';
+import { PaymentService } from '@app/payment/payment.service';
+import { RoomDto } from '@app/room/types/RoomDto';
+import { CreateRoomDto } from '@app/room/types/CreateRoomDto';
+import { RoomStatusEnum } from '@app/room/types/RoomStatusEnum';
+import { CreatePlayerDto } from '@app/player/types/CreatePlayerDto';
+import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
+import { PaymentTypeEnum } from '@app/payment/types/PaymentTypeEnum';
+import { CreatePaymentDto } from '@app/payment/types/CreatePaymentDto';
+import { PlayerResultDto } from '@app/player/types/PlayerResult';
 
 @Injectable()
 export class RoomService {

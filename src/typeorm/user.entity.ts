@@ -1,6 +1,6 @@
 import { Entity, Column, OneToMany } from 'typeorm';
-import { Player } from './player.entity';
-import { BaseEntity } from './base.entity';
+import { Player } from '@entities/player.entity';
+import { BaseEntity } from '@entities/base.entity';
 
 @Entity()
 export class User extends BaseEntity {

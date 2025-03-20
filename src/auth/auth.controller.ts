@@ -1,8 +1,8 @@
 import { Controller, Post, Request, UseGuards, Get } from '@nestjs/common';
 import { ApiBody, ApiResponse } from '@nestjs/swagger';
-import { LocalAuthGuard } from 'src/auth/local.auth.guard';
-import { AuthDto } from './types/AuthDto';
-import { AuthenticatedGuard } from './authenticated.guard';
+import { LocalAuthGuard } from '@app/auth/local.auth.guard';
+import { AuthDto } from '@app/auth/types/AuthDto';
+import { AuthenticatedGuard } from '@app/auth/authenticated.guard';
 
 @Controller('auth')
 export class AuthController {

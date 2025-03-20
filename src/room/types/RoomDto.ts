@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsArray, IsDate, IsEnum, IsInt, IsNotEmpty, IsString } from "class-validator";
 import { RoomStatusEnum } from "./RoomStatusEnum";
-import { PlayerDto } from "src/player/types/PlayerDto";
+import { PlayerDto } from "@app/player/types/PlayerDto";
 
 export class RoomDto {
     @ApiProperty()

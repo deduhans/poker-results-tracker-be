@@ -1,7 +1,7 @@
-import { Column, Entity, JoinTable, OneToMany } from 'typeorm';
-import { Player } from './player.entity';
-import { BaseEntity } from './base.entity';
-import { RoomStatusEnum } from 'src/room/types/RoomStatusEnum';
+import { Column, Entity, OneToMany } from 'typeorm';
+import { Player } from '@entities/player.entity';
+import { BaseEntity } from '@entities/base.entity';
+import { RoomStatusEnum } from '@app/room/types/RoomStatusEnum';
 
 @Entity()
 export class Room extends BaseEntity {

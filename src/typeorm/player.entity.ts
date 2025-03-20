@@ -1,9 +1,9 @@
-import { PlayerRoleEnum } from 'src/player/types/PlayerRoleEnum';
+import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
-import { User } from './user.entity';
-import { Room } from './room.entity';
-import { BaseEntity } from './base.entity';
-import { Payment } from './payment.entity';
+import { User } from '@entities/user.entity';
+import { Room } from '@entities/room.entity';
+import { Payment } from '@entities/payment.entity';
+import { BaseEntity } from '@entities/base.entity';
 
 @Entity()
 export class Player extends BaseEntity {

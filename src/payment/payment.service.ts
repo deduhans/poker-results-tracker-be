@@ -1,11 +1,11 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Payment } from 'src/typeorm/payment.entity';
+import { Payment } from '@entities/payment.entity';
 import { Repository } from 'typeorm';
-import { CreatePaymentDto } from './types/CreatePaymentDto';
-import { Player, Room } from 'src/typeorm';
-import { RoomStatusEnum } from 'src/room/types/RoomStatusEnum';
-import { PaymentTypeEnum } from './types/PaymentTypeEnum';
+import { CreatePaymentDto } from '@app/payment/types/CreatePaymentDto';
+import { Player, Room } from '@entities/index';
+import { RoomStatusEnum } from '@app/room/types/RoomStatusEnum';
+import { PaymentTypeEnum } from '@app/payment/types/PaymentTypeEnum';
 
 @Injectable()
 export class PaymentService {

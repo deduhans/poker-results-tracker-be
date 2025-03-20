@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsEnum, IsNotEmpty, IsNumber, MinLength } from "class-validator";
-import { PlayerRoleEnum } from "./PlayerRoleEnum";
+import { PlayerRoleEnum } from "@app/player/types/PlayerRoleEnum";
 
 export class ChangePlayerRole {
     @ApiProperty()
