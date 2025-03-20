@@ -1,21 +1,19 @@
 import { Module } from '@nestjs/common';
-import { RoomModule } from './room/room.module';
+import { RoomModule } from '@app/room/room.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserModule } from './user/user.module';
-import { PaymentModule } from './payment/payment.module';
-import { PlayerModule } from './player/player.module';
+import { UserModule } from '@app/user/user.module';
+import { PaymentModule } from '@app/payment/payment.module';
+import { PlayerModule } from '@app/player/player.module';
 import entities from './typeorm';
-import { E2EModule } from './e2e/e2e.module';
-import { AuthModule } from './auth/auth.module';
-
-const ENV = process.env.NODE_ENV;
+import { E2EModule } from '@app/e2e/e2e.module';
+import { AuthModule } from '@app/auth/auth.module';
+import { HealthModule } from '@app/health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: `./env/.env.${ENV}`
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -36,7 +34,8 @@ const ENV = process.env.NODE_ENV;
     PaymentModule,
     PlayerModule,
     E2EModule,
-    AuthModule
+    AuthModule,
+    HealthModule
   ],
   controllers: [],
   providers: [],
