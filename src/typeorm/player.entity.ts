@@ -1,11 +1,12 @@
 import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
-import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany, Unique } from 'typeorm';
 import { User } from '@entities/user.entity';
 import { Room } from '@entities/room.entity';
 import { Payment } from '@entities/payment.entity';
 import { BaseEntity } from '@entities/base.entity';
 
 @Entity()
+@Unique(['user', 'room'])
 export class Player extends BaseEntity {
     @ManyToOne(() => User, (user) => user.players)
     user?: User;

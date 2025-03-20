@@ -15,6 +15,11 @@ export class PlayerDto {
 
     @ApiProperty()
     @IsNotEmpty()
+    @IsNumber()
+    userId: number;
+
+    @ApiProperty()
+    @IsNotEmpty()
     @MinLength(3)
     name: string;
 

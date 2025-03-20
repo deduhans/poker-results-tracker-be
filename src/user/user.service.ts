@@ -22,6 +22,14 @@ export class UserService {
         return plainToInstance(UserDto, user, { excludeExtraneousValues: true });
     }
 
+    async getUserWithPassword(username: string): Promise<User> {
+        const user: User | null = await this.userRepository.findOneBy({ username: username.toLowerCase().trim() });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+        return user;
+    }
+
     async getUserById(id: number): Promise<UserDto> {
         const user: User | null = await this.userRepository.findOneBy({ id });
         if (!user) {

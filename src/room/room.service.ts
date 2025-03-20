@@ -17,6 +17,8 @@ import { PlayerResultDto } from '@app/player/types/PlayerResult';
 
 @Injectable()
 export class RoomService {
+    private readonly logger = new Logger(RoomService.name);
+
     constructor(
         @InjectRepository(Room) private readonly roomRepository: Repository<Room>,
         @Inject(PlayerService) private readonly playerService: PlayerService,
@@ -25,74 +27,108 @@ export class RoomService {
     ) { }
 
     async getAll(): Promise<RoomDto[]> {
+        this.logger.log('Fetching all rooms');
         const rooms: Room[] = await this.roomRepository.find();
-
         return plainToInstance(RoomDto, rooms);
     }
 
     async create(createRoomDto: CreateRoomDto): Promise<Room> {
-        const host: User = await this.userService.getUserById(createRoomDto.hostId);
+        this.logger.log(`Creating new room with name: ${createRoomDto.name}`);
+        
+        try {
+            const host: User = await this.userService.getUserById(createRoomDto.hostId);
 
-        const instance: Room = await this.roomRepository.create(createRoomDto);
-        const roomId: number = (await this.roomRepository.save(instance)).id;
+            const instance: Room = await this.roomRepository.create(createRoomDto);
+            const roomId: number = (await this.roomRepository.save(instance)).id;
 
-        const playerInstance: CreatePlayerDto = {
-            roomId: roomId,
-            userId: host.id,
-            name: host.username
-        };
-        const player = await this.playerService.createPlayer(playerInstance);
-        await this.playerService.changeRole({ playerId: player.id, role: PlayerRoleEnum.Host })
+            const playerInstance: CreatePlayerDto = {
+                roomId: roomId,
+                userId: host.id,
+                name: host.username
+            };
+            const player = await this.playerService.createPlayer(playerInstance);
+            await this.playerService.changeRole({ playerId: player.id, role: PlayerRoleEnum.Host });
 
-        const createdRoom = await this.findById(roomId);
-
-        return createdRoom;
+            const createdRoom = await this.findById(roomId);
+            this.logger.log(`Successfully created room with ID: ${roomId}`);
+            
+            return createdRoom;
+        } catch (error) {
+            this.logger.error(`Failed to create room: ${error.message}`);
+            if (error instanceof NotFoundException) {
+                throw new BadRequestException(`Host with ID ${createRoomDto.hostId} not found`);
+            }
+            throw new InternalServerErrorException('Failed to create room');
+        }
     }
 
     async findById(id: number): Promise<Room> {
-        const room = await this.roomRepository.findOne({ where: { id: id }, relations: ['players', 'players.payments'] });
+        this.logger.log(`Finding room by ID: ${id}`);
+        const room = await this.roomRepository.findOne({ 
+            where: { id: id }, 
+            relations: ['players', 'players.payments'] 
+        });
 
         if (!room) {
-            throw new NotFoundException('Could not find the room by id: ' + id);
+            this.logger.warn(`Room with ID ${id} not found`);
+            throw new NotFoundException(`Room with ID ${id} not found`);
         }
 
         return room;
     }
 
     async close(id: number, playersResults: PlayerResultDto[]): Promise<Room> {
+        this.logger.log(`Attempting to close room with ID: ${id}`);
         const room = await this.findById(id);
 
         if (room.status === RoomStatusEnum.Closed) {
-            throw new BadRequestException('The room ia already closed');
+            this.logger.warn(`Attempted to close already closed room: ${id}`);
+            throw new BadRequestException('The room is already closed');
         }
 
-        await this.calculate(id, playersResults);
-        await this.roomRepository.update({ id: id }, { status: RoomStatusEnum.Closed });
+        if (!playersResults || playersResults.length === 0) {
+            throw new BadRequestException('Players results are required to close the room');
+        }
 
+        const totalBalance = await this.calculateTotalBalance(id, playersResults);
+        if (totalBalance !== 0) {
+            throw new BadRequestException('Cannot close room: total income and outcome must be equal to 0');
+        }
+
+        await this.processPayments(id, playersResults);
+        await this.roomRepository.update({ id: id }, { status: RoomStatusEnum.Closed });
+        
+        this.logger.log(`Successfully closed room with ID: ${id}`);
         return await this.findById(id);
     }
 
-    private async calculate(id: number, playersResults: PlayerResultDto[]): Promise<void> {
+    private async calculateTotalBalance(id: number, playersResults: PlayerResultDto[]): Promise<number> {
         const room: Room = await this.findById(id);
 
-        const totalIncome: number = playersResults.reduce((sum, player) => sum += player.income, 0);
-        const totalPayment: number = room.players
+        const totalIncome: number = playersResults.reduce((sum, player) => sum + player.income, 0);
+        const totalOutcome: number = room.players
             .flatMap(player => player.payments)
             .filter(payment => payment !== undefined && payment.type === PaymentTypeEnum.Outcome)
-            .reduce((sum, payment) => sum += payment.amount, 0);
+            .reduce((sum, payment) => sum + payment.amount, 0);
 
-        if (totalIncome !== totalPayment) {
-            throw new InternalServerErrorException('Could not calculate income because total outcome and players chips are not equal.');
-        };
+        return totalIncome + totalOutcome; // Should be 0 for a valid close
+    }
 
-        await playersResults.forEach(async player => {
-            const payment: CreatePaymentDto = {
-                roomId: room.id,
-                playerId: player.id,
-                amount: player.income,
-                type: PaymentTypeEnum.Income
-            }
-            await this.paymentService.createPayment(payment);
-        });
+    private async processPayments(id: number, playersResults: PlayerResultDto[]): Promise<void> {
+        this.logger.log(`Processing payments for room ${id}`);
+        try {
+            await Promise.all(playersResults.map(async player => {
+                const payment: CreatePaymentDto = {
+                    roomId: id,
+                    playerId: player.id,
+                    amount: player.income,
+                    type: PaymentTypeEnum.Income
+                };
+                await this.paymentService.createPayment(payment);
+            }));
+        } catch (error) {
+            this.logger.error(`Failed to process payments: ${error.message}`);
+            throw new InternalServerErrorException('Failed to process room payments');
+        }
     }
 }
