@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
@@ -28,21 +28,6 @@ export class PlayerService {
     }
 
     async createPlayer(player: CreatePlayerDto): Promise<Player> {
-        // Check if user is already in the room
-        if (player.userId) {
-            const existingPlayer = await this.playerRepository.findOne({
-                where: {
-                    room: { id: player.roomId },
-                    user: { id: player.userId }
-                },
-                relations: ['room', 'user']
-            });
-
-            if (existingPlayer) {
-                throw new BadRequestException('User is already in this room');
-            }
-        }
-
         const instance: Player = await this.playerRepository.create(player);
         const newPlayer: Player = await this.playerRepository.save(instance);
 
@@ -66,7 +51,7 @@ export class PlayerService {
         let player: Player = await this.getPlayerById(changePlayerRole.playerId);
 
         if (player.role === PlayerRoleEnum.Host) {
-            throw new InternalServerErrorException('Could not change host role.')
+            throw new InternalServerErrorException('Colud not change host role.')
         } else if (player.role === changePlayerRole.role) {
             return;
         }
