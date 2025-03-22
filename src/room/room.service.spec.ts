@@ -4,15 +4,15 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Room } from '@entities/room.entity';
 import { PlayerService } from '@app/player/player.service';
 import { UserService } from '@app/user/user.service';
-import { PaymentService } from '@app/payment/payment.service';
+import { ExchangeService } from '@app/exchange/exchange.service';
 import { Repository } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateRoomDto } from './types/CreateRoomDto';
 import { RoomStatusEnum } from './types/RoomStatusEnum';
 import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
-import { PaymentTypeEnum } from '@app/payment/types/PaymentTypeEnum';
+import { ExchangeDirectionEnum } from '@app/exchange/types/ExchangeDirectionEnum';
 import { Player } from '@entities/player.entity';
-import { Payment } from '@entities/payment.entity';
+import { Exchange } from '@app/typeorm/exchange.entity';
 import { User } from '@entities/user.entity';
 
 // Mock class-transformer
@@ -28,7 +28,7 @@ describe('RoomService', () => {
     let roomRepository: Repository<Room>;
     let playerService: PlayerService;
     let userService: UserService;
-    let paymentService: PaymentService;
+    let exchangeService: ExchangeService;
 
     const mockDate = new Date();
 
@@ -54,11 +54,12 @@ describe('RoomService', () => {
         updatedAt: mockDate
     });
 
-    const mockPayment = new Payment();
-    Object.assign(mockPayment, {
+    const mockExchange = new Exchange();
+    Object.assign(mockExchange, {
         id: 1,
-        amount: -100,
-        type: PaymentTypeEnum.Outcome,
+        chipAmount: 100,
+        cashAmount: 10000,
+        direction: ExchangeDirectionEnum.BuyIn,
         room: mockRoom,
         createdAt: mockDate,
         updatedAt: mockDate
@@ -71,7 +72,7 @@ describe('RoomService', () => {
         role: PlayerRoleEnum.Player,
         room: mockRoom,
         user: mockUser,
-        payments: [mockPayment],
+        exchanges: [mockExchange],
         createdAt: mockDate,
         updatedAt: mockDate
     });
@@ -79,7 +80,6 @@ describe('RoomService', () => {
     // Set up circular references
     mockRoom.players = [mockPlayer];
     mockUser.players = [mockPlayer];
-    mockPayment.player = mockPlayer;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -109,9 +109,9 @@ describe('RoomService', () => {
                     },
                 },
                 {
-                    provide: PaymentService,
+                    provide: ExchangeService,
                     useValue: {
-                        createPayment: jest.fn().mockResolvedValue(true),
+                        createExchange: jest.fn().mockResolvedValue(true),
                     },
                 },
             ],
@@ -121,7 +121,7 @@ describe('RoomService', () => {
         roomRepository = module.get<Repository<Room>>(getRepositoryToken(Room));
         playerService = module.get<PlayerService>(PlayerService);
         userService = module.get<UserService>(UserService);
-        paymentService = module.get<PaymentService>(PaymentService);
+        exchangeService = module.get<ExchangeService>(ExchangeService);
     });
 
     it('should be defined', () => {
@@ -165,7 +165,7 @@ describe('RoomService', () => {
             expect(result).toEqual(mockRoom);
             expect(roomRepository.findOne).toHaveBeenCalledWith({
                 where: { id: 1 },
-                relations: ['players', 'players.payments']
+                relations: ['players', 'players.exchanges']
             });
         });
 
@@ -181,11 +181,14 @@ describe('RoomService', () => {
         ];
 
         beforeEach(() => {
-            // Update mockPlayer payment to match the expected income
-            mockPayment.amount = -100;
+            // Update mockPlayer exchange to match the expected income
+            mockExchange.chipAmount = -100;
         });
 
         it('should close room successfully when balance is zero', async () => {
+            // Mock the calculateTotalBalance method to return 0 (balanced)
+            jest.spyOn(service as any, 'calculateTotalBalance').mockResolvedValue(0);
+            
             const result = await service.close(1, mockPlayersResults);
             expect(result).toEqual(mockRoom);
             expect(roomRepository.update).toHaveBeenCalledWith(

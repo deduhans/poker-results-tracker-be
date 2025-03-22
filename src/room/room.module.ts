@@ -5,11 +5,11 @@ import { Payment, Player, Room, User } from '@entities/index';
 import { RoomService } from '@app/room/room.service';
 import { PlayerService } from '@app/player/player.service';
 import { UserService } from '@app/user/user.service';
-import { PaymentService } from '@app/payment/payment.service';
+import { ExchangeService } from '@app/exchange/exchange.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Room, Player, User, Payment]),],
   controllers: [RoomController],
-  providers: [RoomService, PlayerService, UserService, PaymentService]
+  providers: [RoomService, PlayerService, UserService, ExchangeService]
 })
 export class RoomModule { }

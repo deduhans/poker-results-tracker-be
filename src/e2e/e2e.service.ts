@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Payment } from "@entities/payment.entity";
+import { Exchange } from "@app/typeorm/exchange.entity";
 import { Player } from "@entities/player.entity";
 import { Room } from "@entities/room.entity";
 import { User } from "@entities/user.entity";
@@ -9,7 +9,7 @@ import { Repository } from "typeorm";
 @Injectable()
 export class E2EService {
     constructor(
-        @InjectRepository(Payment) private readonly paymentRepository: Repository<Payment>,
+        @InjectRepository(Exchange) private readonly paymentRepository: Repository<Exchange>,
         @InjectRepository(Player) private readonly playerRepository: Repository<Player>,
         @InjectRepository(Room) private readonly roomRepository: Repository<Room>,
         @InjectRepository(User) private readonly userRepository: Repository<User>,

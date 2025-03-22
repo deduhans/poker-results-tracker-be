@@ -3,7 +3,7 @@ import { RoomModule } from '@app/room/room.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from '@app/user/user.module';
-import { PaymentModule } from '@app/payment/payment.module';
+import { ExchangeModule } from '@app/exchange/exchange.module';
 import { PlayerModule } from '@app/player/player.module';
 import entities from './typeorm';
 import { E2EModule } from '@app/e2e/e2e.module';
@@ -31,7 +31,7 @@ import { HealthModule } from '@app/health/health.module';
     }),
     RoomModule,
     UserModule,
-    PaymentModule,
+    ExchangeModule,
     PlayerModule,
     E2EModule,
     AuthModule,

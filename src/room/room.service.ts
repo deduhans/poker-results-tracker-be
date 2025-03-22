@@ -5,14 +5,14 @@ import { Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { PlayerService } from '@app/player/player.service';
 import { UserService } from '@app/user/user.service';
-import { PaymentService } from '@app/payment/payment.service';
+import { ExchangeService } from '@app/exchange/exchange.service';
 import { RoomDto } from '@app/room/types/RoomDto';
 import { CreateRoomDto } from '@app/room/types/CreateRoomDto';
 import { RoomStatusEnum } from '@app/room/types/RoomStatusEnum';
 import { CreatePlayerDto } from '@app/player/types/CreatePlayerDto';
 import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
-import { PaymentTypeEnum } from '@app/payment/types/PaymentTypeEnum';
-import { CreatePaymentDto } from '@app/payment/types/CreatePaymentDto';
+import { ExchangeDirectionEnum } from '@app/exchange/types/ExchangeDirectionEnum';
+import { CreateExchangeDto } from '@app/exchange/types/CreateExchangeDto';
 import { PlayerResultDto } from '@app/player/types/PlayerResult';
 
 @Injectable()
@@ -23,7 +23,7 @@ export class RoomService {
         @InjectRepository(Room) private readonly roomRepository: Repository<Room>,
         @Inject(PlayerService) private readonly playerService: PlayerService,
         @Inject(UserService) private readonly userService: UserService,
-        @Inject(PaymentService) private readonly paymentService: PaymentService,
+        @Inject(ExchangeService) private readonly exchangeService: ExchangeService,
     ) { }
 
     async getAll(): Promise<RoomDto[]> {
@@ -34,7 +34,7 @@ export class RoomService {
 
     async create(createRoomDto: CreateRoomDto): Promise<Room> {
         this.logger.log(`Creating new room with name: ${createRoomDto.name}`);
-        
+
         try {
             const host: User = await this.userService.getUserById(createRoomDto.hostId);
 
@@ -51,7 +51,7 @@ export class RoomService {
 
             const createdRoom = await this.findById(roomId);
             this.logger.log(`Successfully created room with ID: ${roomId}`);
-            
+
             return createdRoom;
         } catch (error) {
             this.logger.error(`Failed to create room: ${error.message}`);
@@ -64,9 +64,9 @@ export class RoomService {
 
     async findById(id: number): Promise<Room> {
         this.logger.log(`Finding room by ID: ${id}`);
-        const room = await this.roomRepository.findOne({ 
-            where: { id: id }, 
-            relations: ['players', 'players.payments'] 
+        const room = await this.roomRepository.findOne({
+            where: { id: id },
+            relations: ['players', 'players.exchanges']
         });
 
         if (!room) {
@@ -97,38 +97,34 @@ export class RoomService {
 
         await this.processPayments(id, playersResults);
         await this.roomRepository.update({ id: id }, { status: RoomStatusEnum.Closed });
-        
+
         this.logger.log(`Successfully closed room with ID: ${id}`);
         return await this.findById(id);
     }
 
     private async calculateTotalBalance(id: number, playersResults: PlayerResultDto[]): Promise<number> {
-        const room: Room = await this.findById(id);
-
-        const totalIncome: number = playersResults.reduce((sum, player) => sum + player.income, 0);
-        const totalOutcome: number = room.players
-            .flatMap(player => player.payments)
-            .filter(payment => payment !== undefined && payment.type === PaymentTypeEnum.Outcome)
-            .reduce((sum, payment) => sum + payment.amount, 0);
-
-        return totalIncome + totalOutcome; // Should be 0 for a valid close
+        // For a valid room close, the sum of all player incomes should be 0
+        // (what one player wins, another loses)
+        const totalBalance: number = playersResults.reduce((sum, player) => sum + player.income, 0);
+        
+        return totalBalance; // Should be 0 for a valid close
     }
 
     private async processPayments(id: number, playersResults: PlayerResultDto[]): Promise<void> {
-        this.logger.log(`Processing payments for room ${id}`);
+        this.logger.log(`Processing exchanges for room ${id}`);
         try {
             await Promise.all(playersResults.map(async player => {
-                const payment: CreatePaymentDto = {
+                const exchange: CreateExchangeDto = {
                     roomId: id,
                     playerId: player.id,
                     amount: player.income,
-                    type: PaymentTypeEnum.Income
+                    type: ExchangeDirectionEnum.CashOut
                 };
-                await this.paymentService.createPayment(payment);
+                await this.exchangeService.createExchange(exchange);
             }));
         } catch (error) {
-            this.logger.error(`Failed to process payments: ${error.message}`);
-            throw new InternalServerErrorException('Failed to process room payments');
+            this.logger.error(`Failed to process exchanges: ${error.message}`);
+            throw new InternalServerErrorException('Failed to process room exchanges');
         }
     }
 }

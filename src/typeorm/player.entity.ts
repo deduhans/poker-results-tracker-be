@@ -2,7 +2,7 @@ import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
 import { Column, Entity, ManyToOne, OneToMany, Unique } from 'typeorm';
 import { User } from '@entities/user.entity';
 import { Room } from '@entities/room.entity';
-import { Payment } from '@entities/payment.entity';
+import { Exchange } from '@app/typeorm/exchange.entity';
 import { BaseEntity } from '@entities/base.entity';
 
 @Entity()
@@ -14,8 +14,8 @@ export class Player extends BaseEntity {
     @ManyToOne(() => Room, (room) => room.players)
     room: Room;
 
-    @OneToMany(() => Payment, (payment) => payment.player)
-    payments: Payment[]
+    @OneToMany(() => Exchange, (payment) => payment.player)
+    exchanges: Exchange[]
 
     @Column({ type: 'varchar', length: 20 })
     name: string;
