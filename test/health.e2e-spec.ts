@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '@app/app.module';
 import { E2EService } from '@app/e2e/e2e.service';
+import { TestHelper } from './helpers/test-helper';
 
 describe('HealthController (e2e)', () => {
   let app: INestApplication;
@@ -13,9 +14,7 @@ describe('HealthController (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
+    app = await TestHelper.setupTestApp(moduleFixture);
     e2eService = moduleFixture.get(E2EService);
   });
 

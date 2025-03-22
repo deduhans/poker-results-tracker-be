@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -11,9 +11,9 @@ import { Repository } from 'typeorm';
 import { E2EService } from '@app/e2e/e2e.service';
 import { RoomStatusEnum } from '../src/room/types/RoomStatusEnum';
 import { ExchangeDirectionEnum } from '../src/exchange/types/ExchangeDirectionEnum';
-import * as session from 'express-session';
-import * as passport from 'passport';
 import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
+import { TestHelper } from './helpers/test-helper';
+import { userData, roomData, playerData, exchangeData } from './fixtures/test-data';
 
 describe('ExchangeController (e2e)', () => {
     let app: INestApplication;
@@ -32,25 +32,7 @@ describe('ExchangeController (e2e)', () => {
             imports: [AppModule],
         }).compile();
 
-        app = moduleFixture.createNestApplication();
-        app.useGlobalPipes(new ValidationPipe({
-            whitelist: true,
-            transform: true,
-        }));
-
-        // Set up session middleware
-        app.use(
-            session({
-                secret: 'test-secret',
-                resave: false,
-                saveUninitialized: false,
-            })
-        );
-        app.use(passport.initialize());
-        app.use(passport.session());
-
-        await app.init();
-
+        app = await TestHelper.setupTestApp(moduleFixture);
         roomRepository = moduleFixture.get(getRepositoryToken(Room));
         userRepository = moduleFixture.get(getRepositoryToken(User));
         playerRepository = moduleFixture.get(getRepositoryToken(Player));
@@ -67,42 +49,12 @@ describe('ExchangeController (e2e)', () => {
         await e2eService.clearDatabase();
 
         // Create a test user and get auth cookie
-        const createUserResponse = await request(app.getHttpServer())
-            .post('/users')
-            .send({
-                username: 'testuser',
-                password: 'Password123'
-            });
-
-        testUser = createUserResponse.body;
-
-        // Login and get session cookie
-        const loginResponse = await request(app.getHttpServer())
-            .post('/auth/login')
-            .send({
-                username: 'testuser',
-                password: 'Password123'
-            })
-            .expect(201);
-
-        const cookies = loginResponse.get('Set-Cookie');
-        if (!cookies) {
-            throw new Error('No cookies returned from login');
-        }
-        authCookie = cookies;
+        const userResult = await TestHelper.createTestUser(app);
+        testUser = userResult.user;
+        authCookie = userResult.authCookie;
 
         // Create a test room
-        const createRoomResponse = await request(app.getHttpServer())
-            .post('/rooms')
-            .set('Cookie', authCookie)
-            .send({
-                name: 'Test Room',
-                exchange: 100, // 1 chip = 100 cash
-                hostId: testUser.id
-            })
-            .expect(201);
-
-        testRoom = createRoomResponse.body;
+        testRoom = await TestHelper.createTestRoom(app, authCookie, testUser.id);
 
         // Get the player (host) that was automatically created with the room
         const players = await playerRepository.find({
@@ -121,15 +73,15 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: testRoom.id,
                     playerId: testPlayer.id,
-                    amount: 10,
-                    type: ExchangeDirectionEnum.BuyIn
+                    amount: exchangeData.chipAmount / 10, // Use a smaller amount for testing
+                    type: exchangeData.buyInDirection
                 })
                 .expect(201)
                 .expect((res) => {
                     expect(res.body).toHaveProperty('id');
-                    expect(res.body.chipAmount).toBe(10);
-                    expect(res.body.cashAmount).toBe(1000); // 10 chips * 100 exchange rate
-                    expect(res.body.direction).toBe(ExchangeDirectionEnum.BuyIn);
+                    expect(res.body.chipAmount).toBe(exchangeData.chipAmount / 10);
+                    expect(res.body.cashAmount).toBe((exchangeData.chipAmount / 10) * roomData.exchange); // chips * exchange rate
+                    expect(res.body.direction).toBe(exchangeData.buyInDirection);
                     expect(res.body).toHaveProperty('createdAt');
                 });
         });
@@ -142,8 +94,8 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: testRoom.id,
                     playerId: testPlayer.id,
-                    amount: 20,
-                    type: ExchangeDirectionEnum.BuyIn
+                    amount: exchangeData.chipAmount / 5,
+                    type: exchangeData.buyInDirection
                 })
                 .expect(201);
 
@@ -154,15 +106,15 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: testRoom.id,
                     playerId: testPlayer.id,
-                    amount: 5, // Cash out only part of the chips
-                    type: ExchangeDirectionEnum.CashOut
+                    amount: exchangeData.chipAmount / 20, // Cash out only part of the chips
+                    type: exchangeData.cashOutDirection
                 })
                 .expect(201)
                 .expect((res) => {
                     expect(res.body).toHaveProperty('id');
-                    expect(res.body.chipAmount).toBe(5);
-                    expect(res.body.cashAmount).toBe(500); // 5 chips * 100 exchange rate
-                    expect(res.body.direction).toBe(ExchangeDirectionEnum.CashOut);
+                    expect(res.body.chipAmount).toBe(exchangeData.chipAmount / 20);
+                    expect(res.body.cashAmount).toBe((exchangeData.chipAmount / 20) * roomData.exchange); // chips * exchange rate
+                    expect(res.body.direction).toBe(exchangeData.cashOutDirection);
                 });
         });
 
@@ -172,8 +124,8 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: testRoom.id,
                     playerId: testPlayer.id,
-                    amount: 10,
-                    type: ExchangeDirectionEnum.BuyIn
+                    amount: exchangeData.chipAmount,
+                    type: exchangeData.buyInDirection
                 })
                 .expect(403); // NestJS returns 403 for unauthorized requests
         });
@@ -206,8 +158,8 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: testRoom.id,
                     playerId: testPlayer.id,
-                    amount: -10, // Negative amount
-                    type: ExchangeDirectionEnum.BuyIn
+                    amount: exchangeData.invalidChipAmount, // Negative amount
+                    type: exchangeData.buyInDirection
                 })
                 .expect(400)
                 .expect((res) => {
@@ -227,8 +179,8 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: testRoom.id,
                     playerId: testPlayer.id,
-                    amount: 10,
-                    type: ExchangeDirectionEnum.BuyIn
+                    amount: exchangeData.chipAmount / 10,
+                    type: exchangeData.buyInDirection
                 })
                 .expect(201);
 
@@ -239,59 +191,31 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: testRoom.id,
                     playerId: testPlayer.id,
-                    amount: 20, // More than the 10 chips bought in
-                    type: ExchangeDirectionEnum.CashOut
+                    amount: exchangeData.chipAmount, // More than the chips bought in
+                    type: exchangeData.cashOutDirection
                 })
                 .expect(400)
                 .expect((res) => {
-                    expect(res.body.message).toContain('Cannot cash out 20 chips. Player only has 10 chips.');
+                    expect(res.body.message).toContain(`Cannot cash out ${exchangeData.chipAmount} chips. Player only has ${exchangeData.chipAmount / 10} chips.`);
                 });
         });
 
         it('should fail when player does not belong to the room', async () => {
             // Create another user and room
-            const createUser2Response = await request(app.getHttpServer())
-                .post('/users')
-                .send({
-                    username: 'testuser2',
-                    password: 'Password123'
-                });
+            const secondUserResult = await TestHelper.createTestUser(app, 'testuser2');
+            const secondUser = secondUserResult.user;
+            const secondUserCookie = secondUserResult.authCookie;
 
-            const user2 = createUser2Response.body;
+            // Create a room for the second user
+            const secondRoom = await TestHelper.createTestRoom(app, secondUserCookie, secondUser.id);
 
-            // Login as user2
-            const loginResponse = await request(app.getHttpServer())
-                .post('/auth/login')
-                .send({
-                    username: 'testuser2',
-                    password: 'Password123'
-                });
-
-            const user2Cookies = loginResponse.get('Set-Cookie');
-            if (!user2Cookies) {
-                throw new Error('No cookies returned from login');
-            }
-
-            // Create a room for user2
-            const createRoom2Response = await request(app.getHttpServer())
-                .post('/rooms')
-                .set('Cookie', user2Cookies as string[])
-                .send({
-                    name: 'Test Room 2',
-                    exchange: 100,
-                    hostId: user2.id
-                })
-                .expect(201);
-
-            const room2 = createRoom2Response.body;
-
-            // Get the player from room2
+            // Get the player from the second room
             const players2 = await playerRepository.find({
-                where: { room: { id: room2.id } },
+                where: { room: { id: secondRoom.id } },
                 relations: ['room', 'user']
             });
             
-            const player2 = players2[0];
+            const secondPlayer = players2[0];
 
             // Try to create an exchange with player from room1 and room2
             return request(app.getHttpServer())
@@ -299,9 +223,9 @@ describe('ExchangeController (e2e)', () => {
                 .set('Cookie', authCookie)
                 .send({
                     roomId: testRoom.id,
-                    playerId: player2.id, // Player from room2
-                    amount: 10,
-                    type: ExchangeDirectionEnum.BuyIn
+                    playerId: secondPlayer.id, // Player from room2
+                    amount: exchangeData.chipAmount,
+                    type: exchangeData.buyInDirection
                 })
                 .expect(400)
                 .expect((res) => {
@@ -320,8 +244,8 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: testRoom.id,
                     playerId: testPlayer.id,
-                    amount: 10,
-                    type: ExchangeDirectionEnum.BuyIn
+                    amount: exchangeData.chipAmount,
+                    type: exchangeData.buyInDirection
                 })
                 .expect(400)
                 .expect((res) => {
@@ -336,8 +260,8 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: 9999, // Non-existent room ID
                     playerId: testPlayer.id,
-                    amount: 10,
-                    type: ExchangeDirectionEnum.BuyIn
+                    amount: exchangeData.chipAmount,
+                    type: exchangeData.buyInDirection
                 })
                 .expect(404)
                 .expect((res) => {
@@ -352,8 +276,8 @@ describe('ExchangeController (e2e)', () => {
                 .send({
                     roomId: testRoom.id,
                     playerId: 9999, // Non-existent player ID
-                    amount: 10,
-                    type: ExchangeDirectionEnum.BuyIn
+                    amount: exchangeData.chipAmount,
+                    type: exchangeData.buyInDirection
                 })
                 .expect(404)
                 .expect((res) => {

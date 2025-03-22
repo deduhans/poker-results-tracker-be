@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -9,8 +9,8 @@ import { Repository } from 'typeorm';
 import { E2EService } from '@app/e2e/e2e.service';
 import { RoomStatusEnum } from '../src/room/types/RoomStatusEnum';
 import { ExchangeDirectionEnum } from '../src/exchange/types/ExchangeDirectionEnum';
-import * as session from 'express-session';
-import * as passport from 'passport';
+import { TestHelper } from './helpers/test-helper';
+import { userData, roomData } from './fixtures/test-data';
 
 describe('RoomController (e2e)', () => {
     let app: INestApplication;
@@ -25,25 +25,7 @@ describe('RoomController (e2e)', () => {
             imports: [AppModule],
         }).compile();
 
-        app = moduleFixture.createNestApplication();
-        app.useGlobalPipes(new ValidationPipe({
-            whitelist: true,
-            transform: true,
-        }));
-
-        // Set up session middleware
-        app.use(
-            session({
-                secret: 'test-secret',
-                resave: false,
-                saveUninitialized: false,
-            })
-        );
-        app.use(passport.initialize());
-        app.use(passport.session());
-
-        await app.init();
-
+        app = await TestHelper.setupTestApp(moduleFixture);
         roomRepository = moduleFixture.get(getRepositoryToken(Room));
         userRepository = moduleFixture.get(getRepositoryToken(User));
         e2eService = moduleFixture.get(E2EService);
@@ -58,29 +40,9 @@ describe('RoomController (e2e)', () => {
         await e2eService.clearDatabase();
 
         // Create a test user and get auth cookie
-        const createUserResponse = await request(app.getHttpServer())
-            .post('/users')
-            .send({
-                username: 'testuser',
-                password: 'Password123'
-            });
-
-        testUser = createUserResponse.body;
-
-        // Login and get session cookie
-        const loginResponse = await request(app.getHttpServer())
-            .post('/auth/login')
-            .send({
-                username: 'testuser',
-                password: 'Password123'
-            })
-            .expect(201);
-
-        const cookies = loginResponse.get('Set-Cookie');
-        if (!cookies) {
-            throw new Error('No cookies returned from login');
-        }
-        authCookie = cookies;
+        const userResult = await TestHelper.createTestUser(app);
+        testUser = userResult.user;
+        authCookie = userResult.authCookie;
     });
 
     describe('POST /rooms', () => {
@@ -89,15 +51,15 @@ describe('RoomController (e2e)', () => {
                 .post('/rooms')
                 .set('Cookie', authCookie)
                 .send({
-                    name: 'Test Room',
-                    exchange: 100,
+                    name: roomData.name,
+                    exchange: roomData.exchange,
                     hostId: testUser.id
                 })
                 .expect(201)
                 .expect((res) => {
                     expect(res.body).toHaveProperty('id');
-                    expect(res.body.name).toBe('Test Room');
-                    expect(res.body.exchange).toBe(100);
+                    expect(res.body.name).toBe(roomData.name);
+                    expect(res.body.exchange).toBe(roomData.exchange);
                     expect(res.body.status).toBe(RoomStatusEnum.Opened);
                     expect(res.body).toHaveProperty('createdAt');
                 });
@@ -109,7 +71,7 @@ describe('RoomController (e2e)', () => {
                 .set('Cookie', authCookie)
                 .send({
                     name: '', // empty name
-                    exchange: 100,
+                    exchange: roomData.exchange,
                     hostId: testUser.id
                 })
                 .expect(400)
@@ -128,8 +90,8 @@ describe('RoomController (e2e)', () => {
                 .post('/rooms')
                 .set('Cookie', authCookie)
                 .send({
-                    name: 'Test Room',
-                    exchange: -100, // negative exchange rate
+                    name: roomData.name,
+                    exchange: roomData.invalidExchange, // negative exchange rate
                     hostId: testUser.id
                 })
                 .expect(400)
@@ -146,8 +108,8 @@ describe('RoomController (e2e)', () => {
             return request(app.getHttpServer())
                 .post('/rooms')
                 .send({
-                    name: 'Test Room',
-                    exchange: 100,
+                    name: roomData.name,
+                    exchange: roomData.exchange,
                     hostId: testUser.id
                 })
                 .expect(403); // NestJS returns 403 for unauthorized requests
@@ -178,15 +140,7 @@ describe('RoomController (e2e)', () => {
     describe('GET /rooms', () => {
         it('should get all rooms', async () => {
             // First create a room
-            await request(app.getHttpServer())
-                .post('/rooms')
-                .set('Cookie', authCookie)
-                .send({
-                    name: 'Test Room',
-                    exchange: 100,
-                    hostId: testUser.id
-                })
-                .expect(201);
+            await TestHelper.createTestRoom(app, authCookie, testUser.id);
 
             // Then get all rooms
             return request(app.getHttpServer())
@@ -197,8 +151,8 @@ describe('RoomController (e2e)', () => {
                     expect(Array.isArray(res.body)).toBe(true);
                     expect(res.body.length).toBe(1);
                     expect(res.body[0]).toHaveProperty('id');
-                    expect(res.body[0].name).toBe('Test Room');
-                    expect(res.body[0].exchange).toBe(100);
+                    expect(res.body[0].name).toBe(roomData.name);
+                    expect(res.body[0].exchange).toBe(roomData.exchange);
                     expect(res.body[0].status).toBe(RoomStatusEnum.Opened);
                 });
         });
@@ -211,31 +165,22 @@ describe('RoomController (e2e)', () => {
     });
 
     describe('GET /rooms/:id', () => {
-        let testRoomId: number;
+        let testRoom: Room;
 
         beforeEach(async () => {
             // Create a test room
-            const createResponse = await request(app.getHttpServer())
-                .post('/rooms')
-                .set('Cookie', authCookie)
-                .send({
-                    name: 'Test Room',
-                    exchange: 100,
-                    hostId: testUser.id
-                });
-
-            testRoomId = createResponse.body.id;
+            testRoom = await TestHelper.createTestRoom(app, authCookie, testUser.id);
         });
 
         it('should get a room by id', () => {
             return request(app.getHttpServer())
-                .get(`/rooms/${testRoomId}`)
+                .get(`/rooms/${testRoom.id}`)
                 .set('Cookie', authCookie)
                 .expect(200)
                 .expect((res) => {
-                    expect(res.body).toHaveProperty('id', testRoomId);
-                    expect(res.body.name).toBe('Test Room');
-                    expect(res.body.exchange).toBe(100);
+                    expect(res.body).toHaveProperty('id', testRoom.id);
+                    expect(res.body.name).toBe(roomData.name);
+                    expect(res.body.exchange).toBe(roomData.exchange);
                     expect(res.body.status).toBe(RoomStatusEnum.Opened);
                 });
         });
@@ -249,285 +194,226 @@ describe('RoomController (e2e)', () => {
 
         it('should require authentication', () => {
             return request(app.getHttpServer())
-                .get(`/rooms/${testRoomId}`)
+                .get(`/rooms/${testRoom.id}`)
                 .expect(403);
         });
     });
 
     describe('PUT /rooms/close/:id', () => {
-        let testRoomId: number;
+        let testRoom: Room;
         let secondUser: User;
+        let secondUserAuthCookie: string[];
         let hostPlayer: any;
         let guestPlayer: any;
 
         beforeEach(async () => {
             // Create a test room
-            const roomResponse = await request(app.getHttpServer())
-                .post('/rooms')
-                .set('Cookie', authCookie)
-                .send({
-                    name: 'Test Room',
-                    exchange: 100,
-                    hostId: testUser.id
-                })
-                .expect(201);
-
-            testRoomId = roomResponse.body.id;
-
+            testRoom = await TestHelper.createTestRoom(app, authCookie, testUser.id);
+            
             // Create a second user
-            const createUser2Response = await request(app.getHttpServer())
-                .post('/users')
-                .send({
-                    username: 'testuser2',
-                    password: 'Password123'
-                });
+            const secondUserResult = await TestHelper.createTestUser(app, 'testuser2');
+            secondUser = secondUserResult.user;
+            secondUserAuthCookie = secondUserResult.authCookie;
 
-            secondUser = createUser2Response.body;
+            // Get the room with players to find the host player
+            const roomResponse = await request(app.getHttpServer())
+                .get(`/rooms/${testRoom.id}`)
+                .set('Cookie', authCookie)
+                .expect(200);
+            
+            hostPlayer = roomResponse.body.players.find(p => p.role === 'host');
 
-            // Add the second user to the room
+            // Add the second user to the room as a player
             const addPlayerResponse = await request(app.getHttpServer())
                 .post('/players')
                 .set('Cookie', authCookie)
                 .send({
-                    roomId: testRoomId,
+                    roomId: testRoom.id,
                     userId: secondUser.id,
                     name: 'Guest Player'
                 })
                 .expect(201);
 
             guestPlayer = addPlayerResponse.body;
-
-            // Get the room with players
-            const roomWithPlayersResponse = await request(app.getHttpServer())
-                .get(`/rooms/${testRoomId}`)
-                .set('Cookie', authCookie)
-                .expect(200);
-
-            hostPlayer = roomWithPlayersResponse.body.players[0];
         });
 
         it('should close a room with balanced results', async () => {
-            try {
-                // Get the latest player data to ensure we have valid IDs
-                const roomWithPlayersResponse = await request(app.getHttpServer())
-                    .get(`/rooms/${testRoomId}`)
-                    .set('Cookie', authCookie)
-                    .expect(200);
+            // Get the latest player data to ensure we have valid IDs
+            const roomWithPlayersResponse = await request(app.getHttpServer())
+                .get(`/rooms/${testRoom.id}`)
+                .set('Cookie', authCookie)
+                .expect(200);
 
-                hostPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'host');
-                guestPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'player');
-                
-                console.log('Host player:', hostPlayer);
-                console.log('Guest player:', guestPlayer);
-                
-                // First create buy-in exchanges for both players
-                const hostExchangeResponse = await request(app.getHttpServer())
-                    .post('/exchanges')
-                    .set('Cookie', authCookie)
-                    .send({
-                        roomId: testRoomId,
-                        playerId: hostPlayer.id,
-                        amount: 100,
-                        type: ExchangeDirectionEnum.BuyIn
-                    });
-                
-                console.log('Host exchange response status:', hostExchangeResponse.status);
-                console.log('Host exchange response body:', hostExchangeResponse.body);
-                
-                const guestExchangeResponse = await request(app.getHttpServer())
-                    .post('/exchanges')
-                    .set('Cookie', authCookie)
-                    .send({
-                        roomId: testRoomId,
-                        playerId: guestPlayer.id,
-                        amount: 100,
-                        type: ExchangeDirectionEnum.BuyIn
-                    });
-                
-                console.log('Guest exchange response status:', guestExchangeResponse.status);
-                console.log('Guest exchange response body:', guestExchangeResponse.body);
-                
-                // Let's also check the room status after exchanges
-                const roomAfterExchangesResponse = await request(app.getHttpServer())
-                    .get(`/rooms/${testRoomId}`)
-                    .set('Cookie', authCookie)
-                    .expect(200);
-                
-                console.log('Room after exchanges:', roomAfterExchangesResponse.body);
-                
-                // Then close the room - ensure total income is 0 (one player wins, one loses)
-                const closeResponse = await request(app.getHttpServer())
-                    .put(`/rooms/close/${testRoomId}`)
-                    .set('Cookie', authCookie)
-                    .send([
-                        { id: hostPlayer.id, income: 50 },
-                        { id: guestPlayer.id, income: -50 }
-                    ]);
-                
-                console.log('Close room response status:', closeResponse.status);
-                console.log('Close room response body:', closeResponse.body);
-                
-                expect(closeResponse.status).toBe(200);
-                expect(closeResponse.body).toHaveProperty('id', testRoomId);
-                expect(closeResponse.body.status).toBe('closed');
-            } catch (error) {
-                console.error('Test error:', error);
-                throw error;
-            }
+            hostPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'host');
+            guestPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'player');
+            
+            // First create buy-in exchanges for both players
+            await request(app.getHttpServer())
+                .post('/exchanges')
+                .set('Cookie', authCookie)
+                .send({
+                    roomId: testRoom.id,
+                    playerId: hostPlayer.id,
+                    amount: 100,
+                    type: ExchangeDirectionEnum.BuyIn
+                });
+            
+            await request(app.getHttpServer())
+                .post('/exchanges')
+                .set('Cookie', authCookie)
+                .send({
+                    roomId: testRoom.id,
+                    playerId: guestPlayer.id,
+                    amount: 100,
+                    type: ExchangeDirectionEnum.BuyIn
+                });
+            
+            // Then close the room - ensure total income is 0 (one player wins, one loses)
+            const closeResponse = await request(app.getHttpServer())
+                .put(`/rooms/close/${testRoom.id}`)
+                .set('Cookie', authCookie)
+                .send([
+                    { id: hostPlayer.id, income: 50 },
+                    { id: guestPlayer.id, income: -50 }
+                ]);
+            
+            expect(closeResponse.status).toBe(200);
+            expect(closeResponse.body).toHaveProperty('id', testRoom.id);
+            expect(closeResponse.body.status).toBe('closed');
         });
 
         it('should not close a room with unbalanced results', async () => {
-            try {
-                // Get the latest player data to ensure we have valid IDs
-                const roomWithPlayersResponse = await request(app.getHttpServer())
-                    .get(`/rooms/${testRoomId}`)
-                    .set('Cookie', authCookie)
-                    .expect(200);
+            // Get the latest player data to ensure we have valid IDs
+            const roomWithPlayersResponse = await request(app.getHttpServer())
+                .get(`/rooms/${testRoom.id}`)
+                .set('Cookie', authCookie)
+                .expect(200);
 
-                hostPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'host');
-                guestPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'player');
-                
-                // First create buy-in exchanges for both players
-                const hostExchangeResponse = await request(app.getHttpServer())
-                    .post('/exchanges')
-                    .set('Cookie', authCookie)
-                    .send({
-                        roomId: testRoomId,
-                        playerId: hostPlayer.id,
-                        amount: 100,
-                        type: ExchangeDirectionEnum.BuyIn
-                    });
-                
-                const guestExchangeResponse = await request(app.getHttpServer())
-                    .post('/exchanges')
-                    .set('Cookie', authCookie)
-                    .send({
-                        roomId: testRoomId,
-                        playerId: guestPlayer.id,
-                        amount: 100,
-                        type: ExchangeDirectionEnum.BuyIn
-                    });
-                
-                // Try to close the room with unbalanced results
-                const closeResponse = await request(app.getHttpServer())
-                    .put(`/rooms/close/${testRoomId}`)
-                    .set('Cookie', authCookie)
-                    .send([
-                        { id: hostPlayer.id, income: 100 },
-                        { id: guestPlayer.id, income: -50 }
-                    ]);
-                
-                expect(closeResponse.status).toBe(400);
-                expect(closeResponse.body.message).toBe('Cannot close room: total income and outcome must be equal to 0');
-            } catch (error) {
-                console.error('Test error:', error);
-                throw error;
-            }
+            hostPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'host');
+            guestPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'player');
+            
+            // First create buy-in exchanges for both players
+            await request(app.getHttpServer())
+                .post('/exchanges')
+                .set('Cookie', authCookie)
+                .send({
+                    roomId: testRoom.id,
+                    playerId: hostPlayer.id,
+                    amount: 100,
+                    type: ExchangeDirectionEnum.BuyIn
+                });
+            
+            await request(app.getHttpServer())
+                .post('/exchanges')
+                .set('Cookie', authCookie)
+                .send({
+                    roomId: testRoom.id,
+                    playerId: guestPlayer.id,
+                    amount: 100,
+                    type: ExchangeDirectionEnum.BuyIn
+                });
+            
+            // Try to close the room with unbalanced results
+            const closeResponse = await request(app.getHttpServer())
+                .put(`/rooms/close/${testRoom.id}`)
+                .set('Cookie', authCookie)
+                .send([
+                    { id: hostPlayer.id, income: 100 },
+                    { id: guestPlayer.id, income: -50 }
+                ]);
+            
+            expect(closeResponse.status).toBe(400);
+            expect(closeResponse.body.message).toBe('Cannot close room: total income and outcome must be equal to 0');
         });
 
         it('should not close an already closed room', async () => {
-            try {
-                // Get the latest player data to ensure we have valid IDs
-                const roomWithPlayersResponse = await request(app.getHttpServer())
-                    .get(`/rooms/${testRoomId}`)
-                    .set('Cookie', authCookie)
-                    .expect(200);
+            // Get the latest player data to ensure we have valid IDs
+            const roomWithPlayersResponse = await request(app.getHttpServer())
+                .get(`/rooms/${testRoom.id}`)
+                .set('Cookie', authCookie)
+                .expect(200);
 
-                hostPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'host');
-                guestPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'player');
-                
-                // First create buy-in exchanges for both players
-                const hostExchangeResponse = await request(app.getHttpServer())
-                    .post('/exchanges')
-                    .set('Cookie', authCookie)
-                    .send({
-                        roomId: testRoomId,
-                        playerId: hostPlayer.id,
-                        amount: 100,
-                        type: ExchangeDirectionEnum.BuyIn
-                    });
-                
-                const guestExchangeResponse = await request(app.getHttpServer())
-                    .post('/exchanges')
-                    .set('Cookie', authCookie)
-                    .send({
-                        roomId: testRoomId,
-                        playerId: guestPlayer.id,
-                        amount: 100,
-                        type: ExchangeDirectionEnum.BuyIn
-                    });
-                
-                // First close the room
-                const firstCloseResponse = await request(app.getHttpServer())
-                    .put(`/rooms/close/${testRoomId}`)
-                    .set('Cookie', authCookie)
-                    .send([
-                        { id: hostPlayer.id, income: 50 },
-                        { id: guestPlayer.id, income: -50 }
-                    ]);
-                
-                expect(firstCloseResponse.status).toBe(200);
-                
-                // Try to close it again
-                const secondCloseResponse = await request(app.getHttpServer())
-                    .put(`/rooms/close/${testRoomId}`)
-                    .set('Cookie', authCookie)
-                    .send([
-                        { id: hostPlayer.id, income: 50 },
-                        { id: guestPlayer.id, income: -50 }
-                    ]);
-                
-                expect(secondCloseResponse.status).toBe(400);
-                expect(secondCloseResponse.body.message).toBe('The room is already closed');
-            } catch (error) {
-                console.error('Test error:', error);
-                throw error;
-            }
+            hostPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'host');
+            guestPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'player');
+            
+            // First create buy-in exchanges for both players
+            await request(app.getHttpServer())
+                .post('/exchanges')
+                .set('Cookie', authCookie)
+                .send({
+                    roomId: testRoom.id,
+                    playerId: hostPlayer.id,
+                    amount: 100,
+                    type: ExchangeDirectionEnum.BuyIn
+                });
+            
+            await request(app.getHttpServer())
+                .post('/exchanges')
+                .set('Cookie', authCookie)
+                .send({
+                    roomId: testRoom.id,
+                    playerId: guestPlayer.id,
+                    amount: 100,
+                    type: ExchangeDirectionEnum.BuyIn
+                });
+            
+            // First close the room
+            const firstCloseResponse = await request(app.getHttpServer())
+                .put(`/rooms/close/${testRoom.id}`)
+                .set('Cookie', authCookie)
+                .send([
+                    { id: hostPlayer.id, income: 50 },
+                    { id: guestPlayer.id, income: -50 }
+                ]);
+            
+            expect(firstCloseResponse.status).toBe(200);
+            
+            // Try to close it again
+            const secondCloseResponse = await request(app.getHttpServer())
+                .put(`/rooms/close/${testRoom.id}`)
+                .set('Cookie', authCookie)
+                .send([
+                    { id: hostPlayer.id, income: 50 },
+                    { id: guestPlayer.id, income: -50 }
+                ]);
+            
+            expect(secondCloseResponse.status).toBe(400);
+            expect(secondCloseResponse.body.message).toBe('The room is already closed');
         });
 
         it('should require authentication to close a room', async () => {
-            try {
-                // Get the latest player data to ensure we have valid IDs
-                const roomWithPlayersResponse = await request(app.getHttpServer())
-                    .get(`/rooms/${testRoomId}`)
-                    .set('Cookie', authCookie)
-                    .expect(200);
+            // Get the latest player data to ensure we have valid IDs
+            const roomWithPlayersResponse = await request(app.getHttpServer())
+                .get(`/rooms/${testRoom.id}`)
+                .set('Cookie', authCookie)
+                .expect(200);
 
-                hostPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'host');
-                guestPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'player');
-                
-                // Try to close the room without authentication
-                const closeResponse = await request(app.getHttpServer())
-                    .put(`/rooms/close/${testRoomId}`)
-                    .send([
-                        { id: hostPlayer.id, income: 50 },
-                        { id: guestPlayer.id, income: -50 }
-                    ]);
-                
-                expect(closeResponse.status).toBe(403);
-            } catch (error) {
-                console.error('Test error:', error);
-                throw error;
-            }
+            hostPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'host');
+            guestPlayer = roomWithPlayersResponse.body.players.find(p => p.role === 'player');
+            
+            // Try to close the room without authentication
+            const closeResponse = await request(app.getHttpServer())
+                .put(`/rooms/close/${testRoom.id}`)
+                .send([
+                    { id: hostPlayer.id, income: 50 },
+                    { id: guestPlayer.id, income: -50 }
+                ]);
+            
+            expect(closeResponse.status).toBe(403);
         });
 
         it('should return 404 for non-existent room', async () => {
-            try {
-                // Try to close a non-existent room
-                const closeResponse = await request(app.getHttpServer())
-                    .put('/rooms/close/9999')
-                    .set('Cookie', authCookie)
-                    .send([
-                        { id: hostPlayer.id, income: 50 },
-                        { id: guestPlayer.id, income: -50 }
-                    ]);
-                
-                expect(closeResponse.status).toBe(404);
-                expect(closeResponse.body.message).toBe('Room with ID 9999 not found');
-            } catch (error) {
-                console.error('Test error:', error);
-                throw error;
-            }
+            // Try to close a non-existent room
+            const closeResponse = await request(app.getHttpServer())
+                .put('/rooms/close/9999')
+                .set('Cookie', authCookie)
+                .send([
+                    { id: hostPlayer.id, income: 50 },
+                    { id: guestPlayer.id, income: -50 }
+                ]);
+            
+            expect(closeResponse.status).toBe(404);
+            expect(closeResponse.body.message).toBe('Room with ID 9999 not found');
         });
     });
 });

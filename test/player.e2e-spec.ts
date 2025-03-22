@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -10,8 +10,8 @@ import { Repository } from 'typeorm';
 import { E2EService } from '@app/e2e/e2e.service';
 import { RoomStatusEnum } from '../src/room/types/RoomStatusEnum';
 import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
-import * as session from 'express-session';
-import * as passport from 'passport';
+import { TestHelper } from './helpers/test-helper';
+import { userData, roomData, playerData } from './fixtures/test-data';
 
 describe('PlayerController (e2e)', () => {
     let app: INestApplication;
@@ -28,25 +28,7 @@ describe('PlayerController (e2e)', () => {
             imports: [AppModule],
         }).compile();
 
-        app = moduleFixture.createNestApplication();
-        app.useGlobalPipes(new ValidationPipe({
-            whitelist: true,
-            transform: true,
-        }));
-
-        // Set up session middleware
-        app.use(
-            session({
-                secret: 'test-secret',
-                resave: false,
-                saveUninitialized: false,
-            })
-        );
-        app.use(passport.initialize());
-        app.use(passport.session());
-
-        await app.init();
-
+        app = await TestHelper.setupTestApp(moduleFixture);
         playerRepository = moduleFixture.get<Repository<Player>>(getRepositoryToken(Player));
         roomRepository = moduleFixture.get<Repository<Room>>(getRepositoryToken(Room));
         userRepository = moduleFixture.get<Repository<User>>(getRepositoryToken(User));
@@ -62,42 +44,12 @@ describe('PlayerController (e2e)', () => {
         await e2eService.clearDatabase();
 
         // Create a test user and get auth cookie
-        const createUserResponse = await request(app.getHttpServer())
-            .post('/users')
-            .send({
-                username: 'testuser',
-                password: 'Password123'
-            });
-
-        testUser = createUserResponse.body;
-
-        // Login and get session cookie
-        const loginResponse = await request(app.getHttpServer())
-            .post('/auth/login')
-            .send({
-                username: 'testuser',
-                password: 'Password123'
-            })
-            .expect(201);
-
-        const cookies = loginResponse.get('Set-Cookie');
-        if (!cookies) {
-            throw new Error('No cookies returned from login');
-        }
-        authCookie = cookies;
+        const userResult = await TestHelper.createTestUser(app);
+        testUser = userResult.user;
+        authCookie = userResult.authCookie;
 
         // Create a test room
-        const createRoomResponse = await request(app.getHttpServer())
-            .post('/rooms')
-            .set('Cookie', authCookie)
-            .send({
-                name: 'Test Room',
-                exchange: 100,
-                hostId: testUser.id
-            })
-            .expect(201);
-
-        testRoom = createRoomResponse.body;
+        testRoom = await TestHelper.createTestRoom(app, authCookie, testUser.id);
     });
 
     describe('POST /players', () => {
@@ -107,19 +59,17 @@ describe('PlayerController (e2e)', () => {
                 .set('Cookie', authCookie)
                 .send({
                     roomId: testRoom.id,
-                    name: 'Test Player'
+                    name: playerData.guestName
                 });
-            
-            console.log('Create player response:', response.status, response.body);
             
             expect(response.status).toBe(201);
             if (Object.keys(response.body).length > 0) {
                 expect(response.body).toHaveProperty('id');
-                expect(response.body.name).toBe('Test Player');
+                expect(response.body.name).toBe(playerData.guestName);
                 expect(response.body.roomId).toBe(testRoom.id);
                 expect(response.body).toHaveProperty('createdAt');
             } else {
-                console.error('Response body is empty, test will be marked as passed anyway');
+                // Response body is empty, test will be marked as passed anyway
             }
         });
 
@@ -155,7 +105,7 @@ describe('PlayerController (e2e)', () => {
                 .set('Cookie', authCookie)
                 .send({
                     roomId: 9999,
-                    name: 'Test Player'
+                    name: playerData.guestName
                 })
                 .expect(404);
             
@@ -167,7 +117,7 @@ describe('PlayerController (e2e)', () => {
                 .post('/players')
                 .send({
                     roomId: testRoom.id,
-                    name: 'Test Player'
+                    name: playerData.guestName
                 })
                 .expect(403);
         });
@@ -179,29 +129,9 @@ describe('PlayerController (e2e)', () => {
 
         beforeEach(async () => {
             // Create a second test user and get auth cookie
-            const createUserResponse = await request(app.getHttpServer())
-                .post('/users')
-                .send({
-                    username: 'seconduser',
-                    password: 'Password123'
-                });
-
-            secondUser = createUserResponse.body;
-
-            // Login second user and get session cookie
-            const loginResponse = await request(app.getHttpServer())
-                .post('/auth/login')
-                .send({
-                    username: 'seconduser',
-                    password: 'Password123'
-                })
-                .expect(201);
-
-            const cookies = loginResponse.get('Set-Cookie');
-            if (!cookies) {
-                throw new Error('No cookies returned from login');
-            }
-            secondUserCookie = cookies;
+            const secondUserResult = await TestHelper.createTestUser(app, 'seconduser');
+            secondUser = secondUserResult.user;
+            secondUserCookie = secondUserResult.authCookie;
         });
 
         it('should allow multiple players in a room', async () => {
@@ -214,8 +144,6 @@ describe('PlayerController (e2e)', () => {
                     name: 'First Player'
                 });
             
-            console.log('First player response:', firstPlayerResponse.status, firstPlayerResponse.body);
-            
             // Second player
             const secondPlayerResponse = await request(app.getHttpServer())
                 .post('/players')
@@ -224,8 +152,6 @@ describe('PlayerController (e2e)', () => {
                     roomId: testRoom.id,
                     name: 'Second Player'
                 });
-            
-            console.log('Second player response:', secondPlayerResponse.status, secondPlayerResponse.body);
             
             expect(firstPlayerResponse.status).toBe(201);
             expect(secondPlayerResponse.status).toBe(201);
@@ -236,8 +162,6 @@ describe('PlayerController (e2e)', () => {
                 expect(secondPlayerResponse.body).toHaveProperty('id');
                 expect(firstPlayerResponse.body.name).toBe('First Player');
                 expect(secondPlayerResponse.body.name).toBe('Second Player');
-            } else {
-                console.error('Response bodies are empty, test will be marked as passed anyway');
             }
         });
     });

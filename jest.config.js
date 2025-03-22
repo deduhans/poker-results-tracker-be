@@ -14,5 +14,7 @@ module.exports = {
     '^@test/(.*)$': '<rootDir>/test/$1',
     '^@entities/(.*)$': '<rootDir>/src/typeorm/$1',
     '^@common/(.*)$': '<rootDir>/src/common/$1'
-  }
+  },
+  globalSetup: '<rootDir>/test/jest-global-setup.ts',
+  globalTeardown: '<rootDir>/test/jest-global-teardown.ts'
 };

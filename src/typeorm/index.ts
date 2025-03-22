@@ -5,5 +5,5 @@ import { User } from "./user.entity";
 
 const entities = [Room, Player, User, Exchange];
 
-export { Room, Player, User, Exchange as Payment };
+export { Room, Player, User, Exchange };
 export default entities;

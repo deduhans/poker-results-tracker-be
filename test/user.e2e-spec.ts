@@ -1,10 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../src/typeorm/user.entity';
 import { Repository } from 'typeorm';
+import { TestHelper } from './helpers/test-helper';
+import { userData } from './fixtures/test-data';
 import { E2EService } from '@app/e2e/e2e.service';
 
 describe('UserController (e2e)', () => {
@@ -17,24 +19,19 @@ describe('UserController (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }));
-    await app.init();
-
+    app = await TestHelper.setupTestApp(moduleFixture);
     userRepository = moduleFixture.get(getRepositoryToken(User));
     e2eService = moduleFixture.get(E2EService);
   });
 
   afterAll(async () => {
-    await e2eService.clearDatabase(); // Clean up the test database
+    await e2eService.clearDatabase();
     await app.close();
   });
 
   beforeEach(async () => {
-    await e2eService.clearDatabase(); // Clean up before each test
+    // Clear the database before each test using the E2EService
+    await e2eService.clearDatabase();
   });
 
   describe('POST /users', () => {
@@ -42,13 +39,13 @@ describe('UserController (e2e)', () => {
       return request(app.getHttpServer())
         .post('/users')
         .send({
-          username: 'testuser',
-          password: 'Password123'
+          username: userData.username,
+          password: userData.password
         })
         .expect(201)
         .expect((res) => {
           expect(res.body).toHaveProperty('id');
-          expect(res.body.username).toBe('testuser');
+          expect(res.body.username).toBe(userData.username);
           expect(res.body).not.toHaveProperty('password');
           expect(res.body).toHaveProperty('createdAt');
         });
@@ -59,7 +56,7 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: 'TestUser',
-          password: 'Password123'
+          password: userData.password
         })
         .expect(201)
         .expect((res) => {
@@ -72,8 +69,8 @@ describe('UserController (e2e)', () => {
       await request(app.getHttpServer())
         .post('/users')
         .send({
-          username: 'testuser',
-          password: 'Password123'
+          username: userData.username,
+          password: userData.password
         })
         .expect(201);
 
@@ -81,8 +78,8 @@ describe('UserController (e2e)', () => {
       return request(app.getHttpServer())
         .post('/users')
         .send({
-          username: 'testuser',
-          password: 'DifferentPass123'
+          username: userData.username,
+          password: userData.password
         })
         .expect(409);
     });
@@ -92,7 +89,7 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: 'te', // too short
-          password: 'Password123'
+          password: userData.password
         })
         .expect(400)
         .expect((res) => {
@@ -108,7 +105,7 @@ describe('UserController (e2e)', () => {
       return request(app.getHttpServer())
         .post('/users')
         .send({
-          username: 'testuser',
+          username: userData.username,
           password: 'short' // too short and no numbers
         })
         .expect(400)
@@ -127,7 +124,7 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: '  testuser  ',
-          password: 'Password123'
+          password: userData.password
         })
         .expect(201)
         .expect((res) => {
