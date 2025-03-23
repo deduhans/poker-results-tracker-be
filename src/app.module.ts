@@ -35,10 +35,9 @@ import { HealthModule } from '@app/health/health.module';
     PlayerModule,
     E2EModule,
     AuthModule,
-    HealthModule
+    HealthModule,
   ],
   controllers: [],
   providers: [],
 })
-
-export class AppModule { }
+export class AppModule {}

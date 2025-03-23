@@ -6,7 +6,7 @@ import { UserDto } from '@app/user/types/UserDto';
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @Post()
   @ApiBody({ type: CreateUserDto })

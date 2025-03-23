@@ -6,8 +6,8 @@ import { Exchange } from '@app/typeorm/exchange.entity';
 import { Player, Room } from '@entities/index';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Exchange, Room, Player]),],
+  imports: [TypeOrmModule.forFeature([Exchange, Room, Player])],
   controllers: [ExchangeController],
-  providers: [ExchangeService]
+  providers: [ExchangeService],
 })
-export class ExchangeModule { }
+export class ExchangeModule {}

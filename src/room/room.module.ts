@@ -8,8 +8,8 @@ import { UserService } from '@app/user/user.service';
 import { ExchangeService } from '@app/exchange/exchange.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Room, Player, User, Exchange]),],
+  imports: [TypeOrmModule.forFeature([Room, Player, User, Exchange])],
   controllers: [RoomController],
-  providers: [RoomService, PlayerService, UserService, ExchangeService]
+  providers: [RoomService, PlayerService, UserService, ExchangeService],
 })
-export class RoomModule { }
+export class RoomModule {}

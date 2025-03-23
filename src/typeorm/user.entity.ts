@@ -8,8 +8,8 @@ export class User extends BaseEntity {
   username: string;
 
   @Column()
-  password: string
+  password: string;
 
   @OneToMany(() => Player, (player) => player.user)
-  players: Player[]
+  players: Player[];
 }

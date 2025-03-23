@@ -5,15 +5,15 @@ import { ExchangeDirectionEnum } from '@app/exchange/types/ExchangeDirectionEnum
 
 @Entity()
 export class Exchange extends BaseEntity {
-    @ManyToOne(() => Player, (player) => player.exchanges)
-    player: Player;
+  @ManyToOne(() => Player, (player) => player.exchanges)
+  player: Player;
 
-    @Column({ type: 'enum', enum: ExchangeDirectionEnum })
-    direction: ExchangeDirectionEnum;
+  @Column({ type: 'enum', enum: ExchangeDirectionEnum })
+  direction: ExchangeDirectionEnum;
 
-    @Column({ type: 'int' })
-    chipAmount: number;
+  @Column({ type: 'int' })
+  chipAmount: number;
 
-    @Column({ type: 'int' })
-    cashAmount: number;
+  @Column({ type: 'int' })
+  cashAmount: number;
 }

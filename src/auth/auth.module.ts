@@ -11,6 +11,6 @@ import { AuthController } from '@app/auth/auth.controller';
 @Module({
   imports: [TypeOrmModule.forFeature([User]), PassportModule.register({ session: true })],
   controllers: [AuthController],
-  providers: [AuthService, UserService, LocalStrategy, SessionSerializer]
+  providers: [AuthService, UserService, LocalStrategy, SessionSerializer],
 })
-export class AuthModule { }
+export class AuthModule {}

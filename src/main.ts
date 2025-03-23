@@ -1,14 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '@app/app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as session from "express-session"
-import * as passport from "passport";
+import * as session from 'express-session';
+import * as passport from 'passport';
 import { ValidationPipe } from '@nestjs/common';
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
 function validateEnv() {
   const required = ['PASSPORT_SECRET', 'NEST_PORT', 'NEST_HOST', 'CLIENT_HOST', 'CLIENT_PORT'];
-  const missing = required.filter(key => !process.env[key]);
+  const missing = required.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
@@ -20,10 +20,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Global Validation Pipe
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
 
   // Swagger Setup
   const options = new DocumentBuilder()
@@ -50,8 +52,8 @@ async function bootstrap() {
       cookie: {
         maxAge: 5 * 60 * 60 * 1000, // 5 hours
         secure: false, // Set to true in production with HTTPS
-      }
-    })
+      },
+    }),
   );
 
   // Passport Setup
@@ -67,7 +69,9 @@ async function bootstrap() {
 
   // Start Server
   await app.listen(parseInt(`${process.env.NEST_PORT}`) || 3000, '0.0.0.0');
-  console.log(`Application is running on: http://${process.env.NEST_HOST}:${process.env.NEST_PORT}`);
+  console.log(
+    `Application is running on: http://${process.env.NEST_HOST}:${process.env.NEST_PORT}`,
+  );
 }
 
 bootstrap();

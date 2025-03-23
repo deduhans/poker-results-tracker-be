@@ -1,4 +1,4 @@
 export enum ExchangeDirectionEnum {
-    BuyIn = 'buyIn',
-    CashOut = 'cashOut'
+  BuyIn = 'buyIn',
+  CashOut = 'cashOut',
 }

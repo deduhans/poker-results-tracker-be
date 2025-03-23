@@ -8,18 +8,18 @@ import { BaseEntity } from '@entities/base.entity';
 @Entity()
 @Unique(['user', 'room'])
 export class Player extends BaseEntity {
-    @ManyToOne(() => User, (user) => user.players)
-    user?: User;
+  @ManyToOne(() => User, (user) => user.players)
+  user?: User;
 
-    @ManyToOne(() => Room, (room) => room.players)
-    room: Room;
+  @ManyToOne(() => Room, (room) => room.players)
+  room: Room;
 
-    @OneToMany(() => Exchange, (payment) => payment.player)
-    exchanges: Exchange[]
+  @OneToMany(() => Exchange, (payment) => payment.player)
+  exchanges: Exchange[];
 
-    @Column({ type: 'varchar', length: 20 })
-    name: string;
+  @Column({ type: 'varchar', length: 20 })
+  name: string;
 
-    @Column({ type: 'enum', enum: PlayerRoleEnum, default: PlayerRoleEnum.Player })
-    role: PlayerRoleEnum;
+  @Column({ type: 'enum', enum: PlayerRoleEnum, default: PlayerRoleEnum.Player })
+  role: PlayerRoleEnum;
 }

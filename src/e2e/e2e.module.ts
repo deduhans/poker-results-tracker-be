@@ -8,10 +8,8 @@ import { Room } from '@entities/room.entity';
 import { User } from '@entities/user.entity';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Exchange, Player, Room, User])
-    ],
-    controllers: [E2EController],
-    providers: [E2EService],
+  imports: [TypeOrmModule.forFeature([Exchange, Player, Room, User])],
+  controllers: [E2EController],
+  providers: [E2EService],
 })
-export class E2EModule { }
+export class E2EModule {}

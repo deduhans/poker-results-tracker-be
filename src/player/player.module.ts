@@ -6,8 +6,8 @@ import { Player } from '@entities/player.entity';
 import { Room, User } from '@entities/index';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Player, Room, User]),],
+  imports: [TypeOrmModule.forFeature([Player, Room, User])],
   controllers: [PlayerController],
-  providers: [PlayerService]
+  providers: [PlayerService],
 })
-export class PlayerModule { }
+export class PlayerModule {}

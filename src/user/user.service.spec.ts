@@ -3,25 +3,23 @@ import { UserService } from '@app/user/user.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '@entities/user.entity';
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 describe('UserService', () => {
   let service: UserService;
-  let repository: Repository<User>;
 
   const mockUser = {
     id: 1,
     username: 'testuser',
     password: 'hashedPassword123',
     createdAt: new Date(),
-    players: []
+    players: [],
   };
 
   const mockRepository = {
     create: jest.fn(),
     save: jest.fn(),
-    findOneBy: jest.fn()
+    findOneBy: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -36,7 +34,6 @@ describe('UserService', () => {
     }).compile();
 
     service = module.get<UserService>(UserService);
-    repository = module.get<Repository<User>>(getRepositoryToken(User));
   });
 
   afterEach(() => {
@@ -58,7 +55,7 @@ describe('UserService', () => {
       expect(result.username).toBe(mockUser.username);
       expect(result).not.toHaveProperty('password');
       expect(mockRepository.findOneBy).toHaveBeenCalledWith({
-        username: 'testuser'
+        username: 'testuser',
       });
     });
 
@@ -74,7 +71,7 @@ describe('UserService', () => {
       await service.getUser('TestUser');
 
       expect(mockRepository.findOneBy).toHaveBeenCalledWith({
-        username: 'testuser'
+        username: 'testuser',
       });
     });
   });
@@ -82,7 +79,7 @@ describe('UserService', () => {
   describe('createUser', () => {
     const createUserDto = {
       username: 'newuser',
-      password: 'Password123'
+      password: 'Password123',
     };
 
     it('should create a new user successfully', async () => {
@@ -102,8 +99,7 @@ describe('UserService', () => {
     it('should throw ConflictException if username already exists', async () => {
       mockRepository.findOneBy.mockResolvedValue(mockUser);
 
-      await expect(service.createUser(createUserDto))
-        .rejects.toThrow(ConflictException);
+      await expect(service.createUser(createUserDto)).rejects.toThrow(ConflictException);
 
       expect(mockRepository.create).not.toHaveBeenCalled();
       expect(mockRepository.save).not.toHaveBeenCalled();
@@ -111,11 +107,11 @@ describe('UserService', () => {
 
     it('should hash the password before saving', async () => {
       mockRepository.findOneBy.mockResolvedValue(null);
-      mockRepository.create.mockImplementation(dto => dto);
-      mockRepository.save.mockImplementation(user => ({
+      mockRepository.create.mockImplementation((dto) => dto);
+      mockRepository.save.mockImplementation((user) => ({
         ...user,
         id: 1,
-        createdAt: new Date()
+        createdAt: new Date(),
       }));
 
       await service.createUser(createUserDto);
@@ -127,16 +123,16 @@ describe('UserService', () => {
 
     it('should trim and lowercase username before saving', async () => {
       mockRepository.findOneBy.mockResolvedValue(null);
-      mockRepository.create.mockImplementation(dto => dto);
-      mockRepository.save.mockImplementation(user => ({
+      mockRepository.create.mockImplementation((dto) => dto);
+      mockRepository.save.mockImplementation((user) => ({
         ...user,
         id: 1,
-        createdAt: new Date()
+        createdAt: new Date(),
       }));
 
       await service.createUser({
         username: '  TestUser  ',
-        password: 'Password123'
+        password: 'Password123',
       });
 
       const savedUser = mockRepository.create.mock.calls[0][0];

@@ -2,16 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { User } from '../src/typeorm/user.entity';
-import { Repository } from 'typeorm';
 import { TestHelper } from './helpers/test-helper';
 import { userData } from './fixtures/test-data';
 import { E2EService } from '@app/e2e/e2e.service';
 
 describe('UserController (e2e)', () => {
   let app: INestApplication;
-  let userRepository: Repository<User>;
   let e2eService: E2EService;
 
   beforeAll(async () => {
@@ -20,7 +16,6 @@ describe('UserController (e2e)', () => {
     }).compile();
 
     app = await TestHelper.setupTestApp(moduleFixture);
-    userRepository = moduleFixture.get(getRepositoryToken(User));
     e2eService = moduleFixture.get(E2EService);
   });
 
@@ -40,7 +35,7 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: userData.username,
-          password: userData.password
+          password: userData.password,
         })
         .expect(201)
         .expect((res) => {
@@ -56,7 +51,7 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: 'TestUser',
-          password: userData.password
+          password: userData.password,
         })
         .expect(201)
         .expect((res) => {
@@ -70,7 +65,7 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: userData.username,
-          password: userData.password
+          password: userData.password,
         })
         .expect(201);
 
@@ -79,7 +74,7 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: userData.username,
-          password: userData.password
+          password: userData.password,
         })
         .expect(409);
     });
@@ -89,14 +84,12 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: 'te', // too short
-          password: userData.password
+          password: userData.password,
         })
         .expect(400)
         .expect((res) => {
           expect(res.body.message).toEqual(
-            expect.arrayContaining([
-              'Username must be at least 3 characters long'
-            ])
+            expect.arrayContaining(['Username must be at least 3 characters long']),
           );
         });
     });
@@ -106,15 +99,15 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: userData.username,
-          password: 'short' // too short and no numbers
+          password: 'short', // too short and no numbers
         })
         .expect(400)
         .expect((res) => {
           expect(res.body.message).toEqual(
             expect.arrayContaining([
               'Password must contain at least one number',
-              'Password must be at least 8 characters long'
-            ])
+              'Password must be at least 8 characters long',
+            ]),
           );
         });
     });
@@ -124,7 +117,7 @@ describe('UserController (e2e)', () => {
         .post('/users')
         .send({
           username: '  testuser  ',
-          password: userData.password
+          password: userData.password,
         })
         .expect(201)
         .expect((res) => {
@@ -139,10 +132,7 @@ describe('UserController (e2e)', () => {
         .expect(400)
         .expect((res) => {
           expect(res.body.message).toEqual(
-            expect.arrayContaining([
-              'Username is required',
-              'Password is required'
-            ])
+            expect.arrayContaining(['Username is required', 'Password is required']),
           );
         });
     });

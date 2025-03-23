@@ -1,4 +1,3 @@
-import { RoomStatusEnum } from '../../src/room/types/RoomStatusEnum';
 import { PlayerRoleEnum } from '../../src/player/types/PlayerRoleEnum';
 import { ExchangeDirectionEnum } from '../../src/exchange/types/ExchangeDirectionEnum';
 
@@ -9,7 +8,7 @@ export const userData = {
   username: 'testuser',
   password: 'Password123',
   invalidPassword: 'WrongPassword',
-  nonExistentUsername: 'nonexistentuser'
+  nonExistentUsername: 'nonexistentuser',
 };
 
 /**
@@ -19,7 +18,7 @@ export const roomData = {
   name: 'Test Room',
   exchange: 100,
   invalidName: 'A', // Too short
-  invalidExchange: -10 // Negative exchange rate
+  invalidExchange: -10, // Negative exchange rate
 };
 
 /**
@@ -29,7 +28,7 @@ export const playerData = {
   hostName: 'testuser',
   guestName: 'Guest Player',
   hostRole: PlayerRoleEnum.Host,
-  playerRole: PlayerRoleEnum.Player
+  playerRole: PlayerRoleEnum.Player,
 };
 
 /**
@@ -39,7 +38,7 @@ export const exchangeData = {
   buyInDirection: ExchangeDirectionEnum.BuyIn,
   cashOutDirection: ExchangeDirectionEnum.CashOut,
   chipAmount: 100,
-  invalidChipAmount: -50 // Negative chip amount
+  invalidChipAmount: -50, // Negative chip amount
 };
 
 /**
@@ -49,11 +48,11 @@ export const roomClosingData = {
   // Balanced player results (sum to 0)
   balancedResults: (hostId: number, guestId: number) => [
     { id: hostId, income: 50 },
-    { id: guestId, income: -50 }
+    { id: guestId, income: -50 },
   ],
   // Unbalanced player results (don't sum to 0)
   unbalancedResults: (hostId: number, guestId: number) => [
     { id: hostId, income: 100 },
-    { id: guestId, income: -50 }
-  ]
+    { id: guestId, income: -50 },
+  ],
 };

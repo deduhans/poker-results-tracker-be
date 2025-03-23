@@ -9,7 +9,6 @@ import { Player } from '../../src/typeorm/player.entity';
 import { Exchange } from '../../src/typeorm/exchange.entity';
 import { Repository } from 'typeorm';
 import { E2EService } from '../../src/e2e/e2e.service';
-import { RoomStatusEnum } from '../../src/room/types/RoomStatusEnum';
 import { PlayerRoleEnum } from '../../src/player/types/PlayerRoleEnum';
 import { ExchangeDirectionEnum } from '../../src/exchange/types/ExchangeDirectionEnum';
 
@@ -19,10 +18,12 @@ export class TestHelper {
    */
   static async setupTestApp(moduleFixture: TestingModule): Promise<INestApplication> {
     const app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+      }),
+    );
 
     // Set up session middleware
     app.use(
@@ -30,7 +31,7 @@ export class TestHelper {
         secret: 'test-secret',
         resave: false,
         saveUninitialized: false,
-      })
+      }),
     );
     app.use(passport.initialize());
     app.use(passport.session());
@@ -45,28 +46,24 @@ export class TestHelper {
   static async createTestUser(
     app: INestApplication,
     username = 'testuser',
-    password = 'Password123'
+    password = 'Password123',
   ): Promise<{ user: User; authCookie: string[] }> {
     // Create user
-    const createUserResponse = await request(app.getHttpServer())
-      .post('/users')
-      .send({
-        username,
-        password
-      });
+    const createUserResponse = await request(app.getHttpServer()).post('/users').send({
+      username,
+      password,
+    });
 
     const user = createUserResponse.body;
 
     // Login and get session cookie
-    const loginResponse = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({
-        username,
-        password
-      });
+    const loginResponse = await request(app.getHttpServer()).post('/auth/login').send({
+      username,
+      password,
+    });
 
     const authCookie = loginResponse.get('Set-Cookie');
-    
+
     if (!authCookie) {
       throw new Error('No auth cookie returned from login');
     }
@@ -82,7 +79,7 @@ export class TestHelper {
     authCookie: string[],
     hostId?: number,
     name = 'Test Room',
-    exchange = 100
+    exchange = 100,
   ): Promise<Room> {
     const response = await request(app.getHttpServer())
       .post('/rooms')
@@ -90,7 +87,7 @@ export class TestHelper {
       .send({
         name,
         exchange,
-        hostId
+        hostId,
       });
 
     return response.body;
@@ -104,7 +101,7 @@ export class TestHelper {
     authCookie: string[],
     roomId: number,
     name = 'Guest Player',
-    role = PlayerRoleEnum.Player
+    role = PlayerRoleEnum.Player,
   ): Promise<Player> {
     const response = await request(app.getHttpServer())
       .post('/players')
@@ -112,7 +109,7 @@ export class TestHelper {
       .send({
         name,
         roomId,
-        role
+        role,
       });
 
     return response.body;
@@ -125,7 +122,7 @@ export class TestHelper {
     app: INestApplication,
     authCookie: string[],
     playerId: number,
-    chipAmount = 100
+    chipAmount = 100,
   ): Promise<Exchange> {
     const response = await request(app.getHttpServer())
       .post('/exchanges')
@@ -133,7 +130,7 @@ export class TestHelper {
       .send({
         playerId,
         direction: ExchangeDirectionEnum.BuyIn,
-        chipAmount
+        chipAmount,
       });
 
     return response.body;
@@ -146,7 +143,7 @@ export class TestHelper {
     app: INestApplication,
     authCookie: string[],
     playerId: number,
-    chipAmount = 100
+    chipAmount = 100,
   ): Promise<Exchange> {
     const response = await request(app.getHttpServer())
       .post('/exchanges')
@@ -154,7 +151,7 @@ export class TestHelper {
       .send({
         playerId,
         direction: ExchangeDirectionEnum.CashOut,
-        chipAmount
+        chipAmount,
       });
 
     return response.body;
@@ -167,7 +164,7 @@ export class TestHelper {
     app: INestApplication,
     authCookie: string[],
     roomId: number,
-    playersResults: { id: number; income: number }[]
+    playersResults: { id: number; income: number }[],
   ): Promise<Room> {
     const response = await request(app.getHttpServer())
       .put(`/rooms/close/${roomId}`)

@@ -1,10 +1,10 @@
-import { CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export abstract class BaseEntity {
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @CreateDateColumn({ default: () => "NOW()" })
-    createdAt: Date
+  @CreateDateColumn({ default: () => 'NOW()' })
+  createdAt: Date;
 }
