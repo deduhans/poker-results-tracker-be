@@ -10,4 +10,4 @@ import { Room, User } from '@entities/index';
   controllers: [PlayerController],
   providers: [PlayerService],
 })
-export class PlayerModule {}
+export class PlayerModule { }

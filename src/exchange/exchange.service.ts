@@ -13,19 +13,17 @@ export class ExchangeService {
     @InjectRepository(Exchange) private readonly exchangeRepository: Repository<Exchange>,
     @InjectRepository(Player) private readonly playerRepository: Repository<Player>,
     @InjectRepository(Room) private readonly roomRepository: Repository<Room>,
-  ) {}
+  ) { }
 
   async createExchange(createExchange: CreateExchangeDto): Promise<Exchange> {
     const { roomId, playerId, amount, type } = createExchange;
 
-    // Find room and player
     const room = await this.roomRepository.findOne({ where: { id: roomId } });
     const player = await this.playerRepository.findOne({
       where: { id: playerId },
       relations: ['exchanges', 'room'],
     });
 
-    // Validations
     if (!room) {
       throw new NotFoundException(`Could not find room with id: ${roomId}`);
     }
@@ -41,22 +39,17 @@ export class ExchangeService {
     if (room.status === RoomStatusEnum.Closed) {
       throw new BadRequestException('Cannot create exchange because the room is closed');
     }
+    let cashAmount: number;
+    let chipAmount: number;
 
-    // Calculate cash amount based on room exchange rate
-    const chipAmount = amount;
-    const cashAmount = chipAmount * room.exchange;
-
-    // For cash out, validate player has enough chips
-    if (type === ExchangeDirectionEnum.CashOut) {
-      const currentBalance = await this.calculatePlayerChipBalance(player.id);
-      if (chipAmount > currentBalance) {
-        throw new BadRequestException(
-          `Cannot cash out ${chipAmount} chips. Player only has ${currentBalance} chips.`,
-        );
-      }
+    if (type === ExchangeDirectionEnum.BuyIn) {
+      cashAmount = amount;
+      chipAmount = cashAmount * room.exchange;
+    } else {
+      chipAmount = amount;
+      cashAmount = chipAmount / room.exchange;
     }
 
-    // Create and save exchange
     const exchange = this.exchangeRepository.create({
       player,
       direction: type,
@@ -67,7 +60,6 @@ export class ExchangeService {
     return this.exchangeRepository.save(exchange);
   }
 
-  // Helper to calculate current chip balance
   private async calculatePlayerChipBalance(playerId: number): Promise<number> {
     const player = await this.playerRepository.findOne({
       where: { id: playerId },

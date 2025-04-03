@@ -62,7 +62,7 @@ async function bootstrap() {
 
   // CORS Setup
   const corsOptions: CorsOptions = {
-    origin: `http://${process.env.CLIENT_HOST}:${process.env.CLIENT_PORT}`,
+    origin: [`http://${process.env.CLIENT_HOST}:${process.env.CLIENT_PORT}`],
     credentials: true,
   };
   app.enableCors(corsOptions);
@@ -71,6 +71,9 @@ async function bootstrap() {
   await app.listen(parseInt(`${process.env.NEST_PORT}`) || 3000, '0.0.0.0');
   console.log(
     `Application is running on: http://${process.env.NEST_HOST}:${process.env.NEST_PORT}`,
+  );
+  console.log(
+    `CORS enabled for: http://${process.env.CLIENT_HOST}:${process.env.CLIENT_PORT}`,
   );
 }
 

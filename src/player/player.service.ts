@@ -12,7 +12,7 @@ export class PlayerService {
     @InjectRepository(Player) private readonly playerRepository: Repository<Player>,
     @InjectRepository(Room) private readonly roomRepository: Repository<Room>,
     @InjectRepository(User) private readonly userRepository: Repository<User>,
-  ) {}
+  ) { }
 
   async getPlayerById(id: number): Promise<Player> {
     const player: Player | null = await this.playerRepository.findOneBy({ id: id });
@@ -25,9 +25,6 @@ export class PlayerService {
   }
 
   async createPlayer(player: CreatePlayerDto): Promise<Player> {
-    const instance: Player = await this.playerRepository.create(player);
-    const newPlayer: Player = await this.playerRepository.save(instance);
-
     const room = await this.roomRepository.findOne({
       where: { id: player.roomId },
       relations: ['players'],
@@ -36,6 +33,9 @@ export class PlayerService {
     if (!room) {
       throw new NotFoundException('Could not find room by id: ' + player.roomId);
     }
+
+    const instance: Player = await this.playerRepository.create(player);
+    const newPlayer: Player = await this.playerRepository.save(instance);
 
     room.players.push(newPlayer);
     await this.roomRepository.save(room);

@@ -21,6 +21,7 @@ import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
 import { ExchangeDirectionEnum } from '@app/exchange/types/ExchangeDirectionEnum';
 import { CreateExchangeDto } from '@app/exchange/types/CreateExchangeDto';
 import { PlayerResultDto } from '@app/player/types/PlayerResult';
+import { Player } from '@entities/player.entity';
 
 @Injectable()
 export class RoomService {
@@ -31,7 +32,7 @@ export class RoomService {
     @Inject(PlayerService) private readonly playerService: PlayerService,
     @Inject(UserService) private readonly userService: UserService,
     @Inject(ExchangeService) private readonly exchangeService: ExchangeService,
-  ) {}
+  ) { }
 
   async getAll(): Promise<RoomDto[]> {
     this.logger.log('Fetching all rooms');
@@ -97,8 +98,9 @@ export class RoomService {
       throw new BadRequestException('Players results are required to close the room');
     }
 
-    const totalBalance = await this.calculateTotalBalance(id, playersResults);
-    if (totalBalance !== 0) {
+    const totalBalance = await this.calculateTotalBalance(playersResults);
+    const totalBuyIn = await this.calculateTotalBuyIn(room.players) * room.exchange;
+    if (totalBalance - totalBuyIn !== 0) {
       throw new BadRequestException(
         'Cannot close room: total income and outcome must be equal to 0',
       );
@@ -111,22 +113,24 @@ export class RoomService {
     return await this.findById(id);
   }
 
-  private async calculateTotalBalance(
-    id: number,
-    playersResults: PlayerResultDto[],
-  ): Promise<number> {
-    // For a valid room close, the sum of all player incomes should be 0
-    // (what one player wins, another loses)
+  private async calculateTotalBalance(playersResults: PlayerResultDto[]): Promise<number> {
     const totalBalance: number = playersResults.reduce((sum, player) => sum + player.income, 0);
 
-    return totalBalance; // Should be 0 for a valid close
+    return totalBalance;
+  }
+
+  private async calculateTotalBuyIn(players: Player[]): Promise<number> {
+    const totalBuyIn: number = players.flatMap(player => player.exchanges)
+      .reduce((sum, exchange) => sum + exchange.cashAmount, 0);
+
+    return totalBuyIn;
   }
 
   private async processPayments(id: number, playersResults: PlayerResultDto[]): Promise<void> {
     this.logger.log(`Processing exchanges for room ${id}`);
     try {
       await Promise.all(
-        playersResults.map(async (player) => {
+        playersResults.filter((player) => player.income !== 0).map(async (player) => {
           const exchange: CreateExchangeDto = {
             roomId: id,
             playerId: player.id,
@@ -140,5 +144,10 @@ export class RoomService {
       this.logger.error(`Failed to process exchanges: ${error.message}`);
       throw new InternalServerErrorException('Failed to process room exchanges');
     }
+  }
+
+  async isUserExistsInRoom(roomId: number, userId: number): Promise<boolean> {
+    const room = await this.findById(roomId);
+    return room.players.some((player) => player.user?.id === userId);
   }
 }
