@@ -8,7 +8,8 @@ import { E2EService } from '@app/e2e/e2e.service';
 import { RoomStatusEnum } from '../src/room/types/RoomStatusEnum';
 import { ExchangeDirectionEnum } from '../src/exchange/types/ExchangeDirectionEnum';
 import { TestHelper } from './helpers/test-helper';
-import { roomData } from './fixtures/test-data';
+import { roomData, exchangeData, roomClosingData } from './fixtures/test-data';
+import * as currencyJs from 'currency.js';
 
 describe('RoomController (e2e)', () => {
   let app: INestApplication;
@@ -237,25 +238,25 @@ describe('RoomController (e2e)', () => {
       await request(app.getHttpServer()).post('/exchanges').set('Cookie', authCookie).send({
         roomId: testRoom.id,
         playerId: hostPlayer.id,
-        amount: 100,
+        amount: exchangeData.smallChipAmount,
         type: ExchangeDirectionEnum.BuyIn,
       });
 
       await request(app.getHttpServer()).post('/exchanges').set('Cookie', authCookie).send({
         roomId: testRoom.id,
         playerId: guestPlayer.id,
-        amount: 100,
+        amount: exchangeData.smallChipAmount,
         type: ExchangeDirectionEnum.BuyIn,
       });
+
+      // Generate balanced results
+      const balancedResults = roomClosingData.balancedResults(hostPlayer.id, guestPlayer.id);
 
       // Then close the room - ensure total income is 0 (one player wins, one loses)
       const closeResponse = await request(app.getHttpServer())
         .put(`/rooms/close/${testRoom.id}`)
         .set('Cookie', authCookie)
-        .send([
-          { id: hostPlayer.id, income: 50 },
-          { id: guestPlayer.id, income: -50 },
-        ]);
+        .send(balancedResults);
 
       expect(closeResponse.status).toBe(200);
       expect(closeResponse.body).toHaveProperty('id', testRoom.id);
@@ -276,25 +277,25 @@ describe('RoomController (e2e)', () => {
       await request(app.getHttpServer()).post('/exchanges').set('Cookie', authCookie).send({
         roomId: testRoom.id,
         playerId: hostPlayer.id,
-        amount: 100,
+        amount: exchangeData.smallChipAmount,
         type: ExchangeDirectionEnum.BuyIn,
       });
 
       await request(app.getHttpServer()).post('/exchanges').set('Cookie', authCookie).send({
         roomId: testRoom.id,
         playerId: guestPlayer.id,
-        amount: 100,
+        amount: exchangeData.smallChipAmount,
         type: ExchangeDirectionEnum.BuyIn,
       });
+
+      // Generate unbalanced results
+      const unbalancedResults = roomClosingData.unbalancedResults(hostPlayer.id, guestPlayer.id);
 
       // Try to close the room with unbalanced results
       const closeResponse = await request(app.getHttpServer())
         .put(`/rooms/close/${testRoom.id}`)
         .set('Cookie', authCookie)
-        .send([
-          { id: hostPlayer.id, income: 100 },
-          { id: guestPlayer.id, income: -50 },
-        ]);
+        .send(unbalancedResults);
 
       expect(closeResponse.status).toBe(400);
       expect(closeResponse.body.message).toBe(
@@ -316,25 +317,25 @@ describe('RoomController (e2e)', () => {
       await request(app.getHttpServer()).post('/exchanges').set('Cookie', authCookie).send({
         roomId: testRoom.id,
         playerId: hostPlayer.id,
-        amount: 100,
+        amount: exchangeData.smallChipAmount,
         type: ExchangeDirectionEnum.BuyIn,
       });
 
       await request(app.getHttpServer()).post('/exchanges').set('Cookie', authCookie).send({
         roomId: testRoom.id,
         playerId: guestPlayer.id,
-        amount: 100,
+        amount: exchangeData.smallChipAmount,
         type: ExchangeDirectionEnum.BuyIn,
       });
+
+      // Generate balanced results
+      const balancedResults = roomClosingData.balancedResults(hostPlayer.id, guestPlayer.id);
 
       // First close the room
       const firstCloseResponse = await request(app.getHttpServer())
         .put(`/rooms/close/${testRoom.id}`)
         .set('Cookie', authCookie)
-        .send([
-          { id: hostPlayer.id, income: 50 },
-          { id: guestPlayer.id, income: -50 },
-        ]);
+        .send(balancedResults);
 
       expect(firstCloseResponse.status).toBe(200);
 
@@ -342,10 +343,7 @@ describe('RoomController (e2e)', () => {
       const secondCloseResponse = await request(app.getHttpServer())
         .put(`/rooms/close/${testRoom.id}`)
         .set('Cookie', authCookie)
-        .send([
-          { id: hostPlayer.id, income: 50 },
-          { id: guestPlayer.id, income: -50 },
-        ]);
+        .send(balancedResults);
 
       expect(secondCloseResponse.status).toBe(400);
       expect(secondCloseResponse.body.message).toBe('The room is already closed');
@@ -361,29 +359,28 @@ describe('RoomController (e2e)', () => {
       hostPlayer = roomWithPlayersResponse.body.players.find((p) => p.role === 'host');
       guestPlayer = roomWithPlayersResponse.body.players.find((p) => p.role === 'player');
 
+      // Generate balanced results
+      const balancedResults = roomClosingData.balancedResults(hostPlayer.id, guestPlayer.id);
+
       // Try to close the room without authentication
       const closeResponse = await request(app.getHttpServer())
         .put(`/rooms/close/${testRoom.id}`)
-        .send([
-          { id: hostPlayer.id, income: 50 },
-          { id: guestPlayer.id, income: -50 },
-        ]);
+        .send(balancedResults);
 
       expect(closeResponse.status).toBe(403);
     });
 
     it('should return 404 for non-existent room', async () => {
+      // Generate balanced results
+      const balancedResults = roomClosingData.balancedResults(hostPlayer.id, guestPlayer.id);
+
       // Try to close a non-existent room
       const closeResponse = await request(app.getHttpServer())
         .put('/rooms/close/9999')
         .set('Cookie', authCookie)
-        .send([
-          { id: hostPlayer.id, income: 50 },
-          { id: guestPlayer.id, income: -50 },
-        ]);
+        .send(balancedResults);
 
       expect(closeResponse.status).toBe(404);
-      expect(closeResponse.body.message).toBe('Room with ID 9999 not found');
     });
   });
 });

@@ -14,6 +14,7 @@ import { ExchangeDirectionEnum } from '@app/exchange/types/ExchangeDirectionEnum
 import { Player } from '@entities/player.entity';
 import { Exchange } from '@app/typeorm/exchange.entity';
 import { User } from '@entities/user.entity';
+import * as currencyJs from 'currency.js';
 
 // Mock class-transformer
 jest.mock('class-transformer', () => ({
@@ -28,6 +29,7 @@ describe('RoomService', () => {
   let roomRepository: Repository<Room>;
   let playerService: PlayerService;
   let userService: UserService;
+  let exchangeService: ExchangeService;
 
   const mockDate = new Date();
 
@@ -56,8 +58,8 @@ describe('RoomService', () => {
   const mockExchange = new Exchange();
   Object.assign(mockExchange, {
     id: 1,
-    chipAmount: 100,
-    cashAmount: 10000,
+    chipAmount: 100.00,
+    cashAmount: 10000.00,
     direction: ExchangeDirectionEnum.BuyIn,
     room: mockRoom,
     createdAt: mockDate,
@@ -120,6 +122,7 @@ describe('RoomService', () => {
     roomRepository = module.get<Repository<Room>>(getRepositoryToken(Room));
     playerService = module.get<PlayerService>(PlayerService);
     userService = module.get<UserService>(UserService);
+    exchangeService = module.get<ExchangeService>(ExchangeService);
   });
 
   it('should be defined', () => {
@@ -174,16 +177,17 @@ describe('RoomService', () => {
   });
 
   describe('close', () => {
-    const mockPlayersResults = [{ id: 1, income: 100 }];
+    const mockPlayersResults = [{ id: 1, income: 100.50 }];
 
     beforeEach(() => {
       // Update mockPlayer exchange to match the expected income
-      mockExchange.chipAmount = -100;
+      mockExchange.chipAmount = 100.50;
     });
 
     it('should close room successfully when balance is zero', async () => {
-      // Mock the calculateTotalBalance method to return 0 (balanced)
-      jest.spyOn(service as any, 'calculateTotalBalance').mockResolvedValue(0);
+      // Mock the calculate methods to return balanced values
+      jest.spyOn(service as any, 'calculateTotalBalance').mockResolvedValue(currencyJs('100.50'));
+      jest.spyOn(service as any, 'calculateTotalBuyIn').mockResolvedValue(currencyJs('100.50'));
 
       const result = await service.close(1, mockPlayersResults);
       expect(result).toEqual(mockRoom);
@@ -206,9 +210,13 @@ describe('RoomService', () => {
 
     it('should throw BadRequestException if balance is not zero', async () => {
       const unbalancedResults = [
-        { id: 1, income: 100 },
-        { id: 2, income: -50 },
+        { id: 1, income: 100.50 },
+        { id: 2, income: -50.25 },
       ];
+
+      // Mock the calculate methods to return unbalanced values
+      jest.spyOn(service as any, 'calculateTotalBalance').mockResolvedValue(currencyJs('50.25'));
+      jest.spyOn(service as any, 'calculateTotalBuyIn').mockResolvedValue(currencyJs('100.50'));
 
       await expect(service.close(1, unbalancedResults)).rejects.toThrow(BadRequestException);
     });

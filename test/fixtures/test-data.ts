@@ -37,8 +37,9 @@ export const playerData = {
 export const exchangeData = {
   buyInDirection: ExchangeDirectionEnum.BuyIn,
   cashOutDirection: ExchangeDirectionEnum.CashOut,
-  chipAmount: 100,
-  invalidChipAmount: -50, // Negative chip amount
+  chipAmount: 100.50,
+  smallChipAmount: 10.25,
+  invalidChipAmount: -50.75, // Negative chip amount
 };
 
 /**
@@ -47,12 +48,12 @@ export const exchangeData = {
 export const roomClosingData = {
   // Balanced player results (sum to 0)
   balancedResults: (hostId: number, guestId: number) => [
-    { id: hostId, income: 50 },
-    { id: guestId, income: -50 },
+    { id: hostId, income: 50.25 },
+    { id: guestId, income: -50.25 },
   ],
   // Unbalanced player results (don't sum to 0)
   unbalancedResults: (hostId: number, guestId: number) => [
-    { id: hostId, income: 100 },
-    { id: guestId, income: -50 },
+    { id: hostId, income: 100.50 },
+    { id: guestId, income: -50.25 },
   ],
 };

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDate, IsEnum, IsNotEmpty, Min } from 'class-validator';
+import { IsDate, IsEnum, IsNotEmpty, IsNumber, Min } from 'class-validator';
 import { ExchangeDirectionEnum } from './ExchangeDirectionEnum';
 
 export class ExchangeDto {
@@ -18,12 +18,14 @@ export class ExchangeDto {
 
   @ApiProperty({ description: 'Amount of chips exchanged' })
   @IsNotEmpty()
-  @Min(1)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
   chipAmount: number;
 
   @ApiProperty({ description: 'Cash amount calculated based on room exchange rate' })
   @IsNotEmpty()
-  @Min(1)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
   cashAmount: number;
 
   @ApiProperty({

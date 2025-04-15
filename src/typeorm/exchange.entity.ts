@@ -11,9 +11,9 @@ export class Exchange extends BaseEntity {
   @Column({ type: 'enum', enum: ExchangeDirectionEnum })
   direction: ExchangeDirectionEnum;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   chipAmount: number;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   cashAmount: number;
 }

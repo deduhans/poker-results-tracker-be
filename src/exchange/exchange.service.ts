@@ -6,6 +6,7 @@ import { CreateExchangeDto } from '@app/exchange/types/CreateExchangeDto';
 import { Player, Room } from '@entities/index';
 import { RoomStatusEnum } from '@app/room/types/RoomStatusEnum';
 import { ExchangeDirectionEnum } from '@app/exchange/types/ExchangeDirectionEnum';
+import * as currencyJs from 'currency.js';
 
 @Injectable()
 export class ExchangeService {
@@ -39,43 +40,47 @@ export class ExchangeService {
     if (room.status === RoomStatusEnum.Closed) {
       throw new BadRequestException('Cannot create exchange because the room is closed');
     }
-    let cashAmount: number;
-    let chipAmount: number;
+    
+    let cashAmount: string;
+    let chipAmount: string;
 
     if (type === ExchangeDirectionEnum.BuyIn) {
-      cashAmount = amount;
-      chipAmount = cashAmount * room.exchange;
+      cashAmount = currencyJs(amount).toString();
+      chipAmount = currencyJs(amount).multiply(room.exchange).toString();
     } else {
-      chipAmount = amount;
-      cashAmount = chipAmount / room.exchange;
+      chipAmount = currencyJs(amount).toString();
+      cashAmount = currencyJs(amount).divide(room.exchange).toString();
     }
 
-    const exchange = this.exchangeRepository.create({
-      player,
-      direction: type,
-      chipAmount,
-      cashAmount,
-    });
+    const exchange = new Exchange();
+    exchange.player = player;
+    exchange.direction = type;
+    exchange.chipAmount = parseFloat(chipAmount);
+    exchange.cashAmount = parseFloat(cashAmount);
 
     return this.exchangeRepository.save(exchange);
   }
 
-  private async calculatePlayerChipBalance(playerId: number): Promise<number> {
+  public async calculatePlayerChipBalance(playerId: number): Promise<string> {
     const player = await this.playerRepository.findOne({
       where: { id: playerId },
       relations: ['exchanges'],
     });
 
-    if (!player || !player.exchanges) {
-      return 0;
+    if (!player || !player.exchanges || player.exchanges.length === 0) {
+      return currencyJs(0).toString();
     }
 
-    return player.exchanges.reduce((balance, exchange) => {
+    let balance = currencyJs(0);
+
+    for (const exchange of player.exchanges) {
       if (exchange.direction === ExchangeDirectionEnum.BuyIn) {
-        return balance + exchange.chipAmount;
+        balance = balance.add(exchange.chipAmount);
       } else {
-        return balance - exchange.chipAmount;
+        balance = balance.subtract(exchange.chipAmount);
       }
-    }, 0);
+    }
+
+    return balance.toString();
   }
 }

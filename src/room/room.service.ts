@@ -22,6 +22,7 @@ import { ExchangeDirectionEnum } from '@app/exchange/types/ExchangeDirectionEnum
 import { CreateExchangeDto } from '@app/exchange/types/CreateExchangeDto';
 import { PlayerResultDto } from '@app/player/types/PlayerResult';
 import { Player } from '@entities/player.entity';
+import * as currencyJs from 'currency.js';
 
 @Injectable()
 export class RoomService {
@@ -99,8 +100,11 @@ export class RoomService {
     }
 
     const totalBalance = await this.calculateTotalBalance(playersResults);
-    const totalBuyIn = await this.calculateTotalBuyIn(room.players) * room.exchange;
-    if (totalBalance - totalBuyIn !== 0) {
+    const totalBuyIn = await this.calculateTotalBuyIn(room.players, room.exchange);
+    
+    // Compare with small tolerance for floating point comparison
+    const difference = currencyJs(totalBalance).subtract(totalBuyIn).value;
+    if (Math.abs(difference) > 0.01) {
       throw new BadRequestException(
         'Cannot close room: total income and outcome must be equal to 0',
       );
@@ -113,28 +117,37 @@ export class RoomService {
     return await this.findById(id);
   }
 
-  private async calculateTotalBalance(playersResults: PlayerResultDto[]): Promise<number> {
-    const totalBalance: number = playersResults.reduce((sum, player) => sum + player.income, 0);
+  private async calculateTotalBalance(playersResults: PlayerResultDto[]): Promise<string> {
+    let totalBalance = currencyJs(0);
+    
+    playersResults.forEach(player => {
+      totalBalance = totalBalance.add(player.income);
+    });
 
-    return totalBalance;
+    return totalBalance.toString();
   }
 
-  private async calculateTotalBuyIn(players: Player[]): Promise<number> {
-    const totalBuyIn: number = players.flatMap(player => player.exchanges)
-      .reduce((sum, exchange) => sum + exchange.cashAmount, 0);
+  private async calculateTotalBuyIn(players: Player[], exchangeRate: number): Promise<string> {
+    let totalBuyIn = currencyJs(0);
+    
+    players.forEach(player => {
+      player.exchanges.forEach(exchange => {
+        totalBuyIn = totalBuyIn.add(exchange.cashAmount);
+      });
+    });
 
-    return totalBuyIn;
+    return totalBuyIn.toString();
   }
 
   private async processPayments(id: number, playersResults: PlayerResultDto[]): Promise<void> {
     this.logger.log(`Processing exchanges for room ${id}`);
     try {
       await Promise.all(
-        playersResults.filter((player) => player.income !== 0).map(async (player) => {
+        playersResults.filter((player) => currencyJs(player.income).value !== 0).map(async (player) => {
           const exchange: CreateExchangeDto = {
             roomId: id,
             playerId: player.id,
-            amount: player.income,
+            amount: Math.abs(currencyJs(player.income).value),
             type: ExchangeDirectionEnum.CashOut,
           };
           await this.exchangeService.createExchange(exchange);

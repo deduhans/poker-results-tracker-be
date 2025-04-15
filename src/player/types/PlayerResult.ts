@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty } from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber } from 'class-validator';
 
 export class PlayerResultDto {
   @ApiProperty()
@@ -9,6 +9,6 @@ export class PlayerResultDto {
 
   @ApiProperty()
   @IsNotEmpty()
-  @IsInt()
+  @IsNumber({ maxDecimalPlaces: 2 })
   income: number;
 }
