@@ -10,7 +10,6 @@ import { CreateExchangeDto } from './types/CreateExchangeDto';
 import { RoomStatusEnum } from '@app/room/types/RoomStatusEnum';
 import { ExchangeDirectionEnum } from './types/ExchangeDirectionEnum';
 import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
-import * as currencyJs from 'currency.js';
 
 // Mock Exchange class
 class MockExchange {
@@ -100,13 +99,13 @@ describe('ExchangeService', () => {
     exchangeRepository = module.get<Repository<Exchange>>(getRepositoryToken(Exchange));
     playerRepository = module.get<Repository<Player>>(getRepositoryToken(Player));
     roomRepository = module.get<Repository<Room>>(getRepositoryToken(Room));
-    
+
     // Mock the Exchange implementation
     jest.spyOn(service, 'createExchange').mockImplementation(async (dto: CreateExchangeDto) => {
       const exchange = new MockExchange();
       exchange.player = mockPlayer;
       exchange.direction = dto.type;
-      
+
       if (dto.type === ExchangeDirectionEnum.BuyIn) {
         exchange.cashAmount = dto.amount;
         exchange.chipAmount = dto.amount * mockRoom.exchange;
@@ -114,7 +113,7 @@ describe('ExchangeService', () => {
         exchange.chipAmount = dto.amount;
         exchange.cashAmount = dto.amount / mockRoom.exchange;
       }
-      
+
       return exchange as unknown as Exchange;
     });
   });
@@ -138,10 +137,10 @@ describe('ExchangeService', () => {
     it('should create a buy-in exchange successfully', async () => {
       // Restore original implementation for this test
       jest.spyOn(service, 'createExchange').mockRestore();
-      
+
       // Set up mocks for service dependencies
       jest.spyOn(exchangeRepository, 'save').mockResolvedValue(mockExchange);
-      
+
       const result = await service.createExchange(createExchangeDto);
 
       expect(result).toBeDefined();
@@ -153,32 +152,10 @@ describe('ExchangeService', () => {
       expect(exchangeRepository.save).toHaveBeenCalled();
     });
 
-    it('should create a cash-out exchange successfully', async () => {
-      // Restore original implementation for this test
-      jest.spyOn(service, 'createExchange').mockRestore();
-      
-      const cashOutDto = {
-        ...createExchangeDto,
-        type: ExchangeDirectionEnum.CashOut,
-      };
-
-      // Mock the calculatePlayerChipBalance method
-      jest.spyOn(service, 'calculatePlayerChipBalance').mockResolvedValue('20.00');
-      jest.spyOn(exchangeRepository, 'save').mockResolvedValue({
-        ...mockExchange,
-        direction: ExchangeDirectionEnum.CashOut
-      });
-
-      const result = await service.createExchange(cashOutDto);
-
-      expect(result).toBeDefined();
-      expect(result.direction).toBe(ExchangeDirectionEnum.CashOut);
-    });
-
     it('should throw NotFoundException if room not found', async () => {
       // Restore original implementation for this test
       jest.spyOn(service, 'createExchange').mockRestore();
-      
+
       jest.spyOn(roomRepository, 'findOne').mockResolvedValue(null);
 
       await expect(service.createExchange(createExchangeDto)).rejects.toThrow(NotFoundException);
@@ -189,7 +166,7 @@ describe('ExchangeService', () => {
     it('should throw NotFoundException if player not found', async () => {
       // Restore original implementation for this test
       jest.spyOn(service, 'createExchange').mockRestore();
-      
+
       jest.spyOn(playerRepository, 'findOne').mockResolvedValue(null);
 
       await expect(service.createExchange(createExchangeDto)).rejects.toThrow(NotFoundException);
@@ -203,7 +180,7 @@ describe('ExchangeService', () => {
     it('should throw BadRequestException if player does not belong to the room', async () => {
       // Restore original implementation for this test
       jest.spyOn(service, 'createExchange').mockRestore();
-      
+
       const playerInDifferentRoom = {
         ...mockPlayer,
         room: { ...mockRoom, id: 2 },
@@ -217,7 +194,7 @@ describe('ExchangeService', () => {
     it('should throw BadRequestException if room is closed', async () => {
       // Restore original implementation for this test
       jest.spyOn(service, 'createExchange').mockRestore();
-      
+
       const closedRoom = {
         ...mockRoom,
         status: RoomStatusEnum.Closed,
@@ -226,52 +203,6 @@ describe('ExchangeService', () => {
       jest.spyOn(roomRepository, 'findOne').mockResolvedValue(closedRoom);
 
       await expect(service.createExchange(createExchangeDto)).rejects.toThrow(BadRequestException);
-    });
-  });
-
-  describe('calculatePlayerChipBalance', () => {
-    it('should calculate the correct chip balance', async () => {
-      const playerWithExchanges = {
-        ...mockPlayer,
-        exchanges: [
-          { direction: ExchangeDirectionEnum.BuyIn, chipAmount: 30 },
-          { direction: ExchangeDirectionEnum.CashOut, chipAmount: 10 },
-          { direction: ExchangeDirectionEnum.BuyIn, chipAmount: 5 },
-        ],
-      };
-
-      jest.spyOn(playerRepository, 'findOne').mockResolvedValue(playerWithExchanges);
-
-      const result = await service.calculatePlayerChipBalance(1);
-
-      // 30 (buy in) - 10 (cash out) + 5 (buy in) = 25
-      // currency.js formats this as "25.00"
-      expect(parseFloat(result)).toBe(25);
-      expect(playerRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: ['exchanges'],
-      });
-    });
-
-    it('should return 0 if player has no exchanges', async () => {
-      const playerWithNoExchanges = {
-        ...mockPlayer,
-        exchanges: [],
-      };
-
-      jest.spyOn(playerRepository, 'findOne').mockResolvedValue(playerWithNoExchanges);
-
-      const result = await service.calculatePlayerChipBalance(1);
-
-      expect(result).toBe('0.00');
-    });
-
-    it('should return 0 if player not found', async () => {
-      jest.spyOn(playerRepository, 'findOne').mockResolvedValue(null);
-
-      const result = await service.calculatePlayerChipBalance(999);
-
-      expect(result).toBe('0.00');
     });
   });
 });

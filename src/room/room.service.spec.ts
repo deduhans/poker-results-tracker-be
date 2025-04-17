@@ -6,7 +6,7 @@ import { PlayerService } from '@app/player/player.service';
 import { UserService } from '@app/user/user.service';
 import { ExchangeService } from '@app/exchange/exchange.service';
 import { Repository } from 'typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CreateRoomDto } from './types/CreateRoomDto';
 import { RoomStatusEnum } from './types/RoomStatusEnum';
 import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
@@ -178,10 +178,14 @@ describe('RoomService', () => {
 
   describe('close', () => {
     const mockPlayersResults = [{ id: 1, income: 100.50 }];
+    const mockUserId = 1; // Host user ID for testing
 
     beforeEach(() => {
       // Update mockPlayer exchange to match the expected income
       mockExchange.chipAmount = 100.50;
+      
+      // Mock the isUserTheHost method to return true for our tests
+      jest.spyOn(service as any, 'isUserTheHost').mockReturnValue(true);
     });
 
     it('should close room successfully when balance is zero', async () => {
@@ -189,7 +193,7 @@ describe('RoomService', () => {
       jest.spyOn(service as any, 'calculateTotalBalance').mockResolvedValue(currencyJs('100.50'));
       jest.spyOn(service as any, 'calculateTotalBuyIn').mockResolvedValue(currencyJs('100.50'));
 
-      const result = await service.close(1, mockPlayersResults);
+      const result = await service.close(1, mockPlayersResults, mockUserId);
       expect(result).toEqual(mockRoom);
       expect(roomRepository.update).toHaveBeenCalledWith(
         { id: 1 },
@@ -205,7 +209,7 @@ describe('RoomService', () => {
       });
       jest.spyOn(roomRepository, 'findOne').mockResolvedValue(closedRoom);
 
-      await expect(service.close(1, mockPlayersResults)).rejects.toThrow(BadRequestException);
+      await expect(service.close(1, mockPlayersResults, mockUserId)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if balance is not zero', async () => {
@@ -218,11 +222,18 @@ describe('RoomService', () => {
       jest.spyOn(service as any, 'calculateTotalBalance').mockResolvedValue(currencyJs('50.25'));
       jest.spyOn(service as any, 'calculateTotalBuyIn').mockResolvedValue(currencyJs('100.50'));
 
-      await expect(service.close(1, unbalancedResults)).rejects.toThrow(BadRequestException);
+      await expect(service.close(1, unbalancedResults, mockUserId)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if no player results provided', async () => {
-      await expect(service.close(1, [])).rejects.toThrow(BadRequestException);
+      await expect(service.close(1, [], mockUserId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw ForbiddenException if user is not the host', async () => {
+      // Override the mock to return false - user is not the host
+      jest.spyOn(service as any, 'isUserTheHost').mockReturnValue(false);
+      
+      await expect(service.close(1, mockPlayersResults, 2)).rejects.toThrow(ForbiddenException);
     });
   });
 });

@@ -40,7 +40,7 @@ export class ExchangeService {
     if (room.status === RoomStatusEnum.Closed) {
       throw new BadRequestException('Cannot create exchange because the room is closed');
     }
-    
+
     let cashAmount: string;
     let chipAmount: string;
 
@@ -59,28 +59,5 @@ export class ExchangeService {
     exchange.cashAmount = parseFloat(cashAmount);
 
     return this.exchangeRepository.save(exchange);
-  }
-
-  public async calculatePlayerChipBalance(playerId: number): Promise<string> {
-    const player = await this.playerRepository.findOne({
-      where: { id: playerId },
-      relations: ['exchanges'],
-    });
-
-    if (!player || !player.exchanges || player.exchanges.length === 0) {
-      return currencyJs(0).toString();
-    }
-
-    let balance = currencyJs(0);
-
-    for (const exchange of player.exchanges) {
-      if (exchange.direction === ExchangeDirectionEnum.BuyIn) {
-        balance = balance.add(exchange.chipAmount);
-      } else {
-        balance = balance.subtract(exchange.chipAmount);
-      }
-    }
-
-    return balance.toString();
   }
 }

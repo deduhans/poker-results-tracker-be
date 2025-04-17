@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { RoomService } from '@app/room/room.service';
 import { ApiBody, ApiResponse } from '@nestjs/swagger';
 import { RoomDto } from '@app/room/types/RoomDto';
@@ -11,7 +11,7 @@ import { PlayerResultDto } from '@app/player/types/PlayerResult';
 @UseGuards(AuthenticatedGuard)
 @Controller('rooms')
 export class RoomController {
-  constructor(private readonly roomService: RoomService) {}
+  constructor(private readonly roomService: RoomService) { }
 
   @Get()
   @ApiResponse({ status: 200, type: [RoomDto] })
@@ -40,8 +40,10 @@ export class RoomController {
   async closeRoom(
     @Param('id', ParseIntPipe) id: number,
     @Body() playersResults: PlayerResultDto[],
+    @Request() req,
   ): Promise<RoomDto> {
-    const room: Room = await this.roomService.close(id, playersResults);
+    const userId = req.user.userId;
+    const room: Room = await this.roomService.close(id, playersResults, userId);
     return plainToInstance(RoomDto, room);
   }
 }

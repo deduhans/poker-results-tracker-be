@@ -1,10 +1,11 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Patch, Post, Request, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { PlayerService } from '@app/player/player.service';
 import {
   ApiBadRequestResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -39,5 +40,57 @@ export class PlayerController {
   async createPlayer(@Body() player: CreatePlayerDto): Promise<PlayerDto> {
     const newPlayer: Player = await this.playerService.createPlayer(player);
     return plainToInstance(PlayerDto, newPlayer, { excludeExtraneousValues: true });
+  }
+
+  @Patch(':id/assign')
+  @ApiOperation({ summary: 'Assign a player to the current user' })
+  @ApiParam({ name: 'id', description: 'Player ID to assign' })
+  @ApiResponse({
+    status: 200,
+    description: 'Player successfully assigned to user',
+    type: PlayerDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'User is already assigned to another player in the same room',
+  })
+  @ApiNotFoundResponse({
+    description: 'Player or user not found',
+  })
+  @ApiForbiddenResponse({
+    description: 'User is not authenticated',
+  })
+  async assignPlayerToUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req,
+  ): Promise<PlayerDto> {
+    const userId = req.user.userId;
+    const player: Player = await this.playerService.assignPlayerToUser(id, userId);
+    return plainToInstance(PlayerDto, player, { excludeExtraneousValues: true });
+  }
+
+  @Patch(':id/setAdmin')
+  @ApiOperation({ summary: 'Set a player as an admin (can only be done by the host)' })
+  @ApiParam({ name: 'id', description: 'Player ID to promote to admin' })
+  @ApiResponse({
+    status: 200,
+    description: 'Player successfully set as admin',
+    type: PlayerDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Player is not assigned to a user or requester is not the host',
+  })
+  @ApiNotFoundResponse({
+    description: 'Player not found',
+  })
+  @ApiForbiddenResponse({
+    description: 'User is not authenticated',
+  })
+  async setPlayerAsAdmin(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req,
+  ): Promise<PlayerDto> {
+    const userId = req.user.userId;
+    const player: Player = await this.playerService.setPlayerAsAdmin(id, userId);
+    return plainToInstance(PlayerDto, player, { excludeExtraneousValues: true });
   }
 }

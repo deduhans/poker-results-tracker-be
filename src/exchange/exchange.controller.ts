@@ -11,7 +11,7 @@ import { ExchangeDirectionEnum } from './types/ExchangeDirectionEnum';
 @Controller('exchanges')
 @ApiTags('exchanges')
 export class ExchangeController {
-  constructor(private readonly exchangeService: ExchangeService) {}
+  constructor(private readonly exchangeService: ExchangeService) { }
 
   @Post()
   @ApiBody({ type: CreateExchangeDto })
@@ -19,23 +19,5 @@ export class ExchangeController {
   async createExchange(@Body() createExchange: CreateExchangeDto): Promise<ExchangeDto> {
     const exchange = await this.exchangeService.createExchange(createExchange);
     return plainToInstance(ExchangeDto, exchange);
-  }
-
-  @Post('cash-out')
-  @ApiBody({ type: CreateExchangeDto })
-  @ApiResponse({ type: ExchangeDto })
-  async cashOut(@Body() createExchange: CreateExchangeDto): Promise<ExchangeDto> {
-    // Enforce cash out type
-    createExchange.type = ExchangeDirectionEnum.CashOut;
-    const exchange = await this.exchangeService.createExchange(createExchange);
-    return plainToInstance(ExchangeDto, exchange);
-  }
-
-  @Get('player/:playerId/balance')
-  @ApiParam({ name: 'playerId', type: Number })
-  @ApiResponse({ type: String })
-  async getPlayerChipBalance(@Param('playerId', ParseIntPipe) playerId: number): Promise<{ balance: string }> {
-    const balance = await this.exchangeService.calculatePlayerChipBalance(playerId);
-    return { balance };
   }
 }
