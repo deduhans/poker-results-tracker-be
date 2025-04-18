@@ -115,7 +115,7 @@ export class RoomService {
     this.logger.log(`Total buy-in: ${totalBuyIn}`);
 
     // Compare with small tolerance for floating point comparison
-    const difference = currencyJs(totalBalance).subtract(totalBuyIn).value;
+    const difference = currencyJs(totalBalance).divide(room.exchange).subtract(totalBuyIn).value;
     if (Math.abs(difference) > 0.01) {
       throw new BadRequestException(
         'Cannot close room: total income and outcome must be equal to 0',
@@ -133,15 +133,15 @@ export class RoomService {
     // Check if user is the host
     const hostPlayer = room.players.find(player => player.role === PlayerRoleEnum.Host);
     const isHost = !!hostPlayer && !!hostPlayer.user && hostPlayer.user.id === userId;
-    
+
     // Check if user is an admin
-    const adminPlayer = room.players.find(player => 
-      player.role === PlayerRoleEnum.Admin && 
-      player.user && 
+    const adminPlayer = room.players.find(player =>
+      player.role === PlayerRoleEnum.Admin &&
+      player.user &&
       player.user.id === userId
     );
     const isAdmin = !!adminPlayer;
-    
+
     return isHost || isAdmin;
   }
 
