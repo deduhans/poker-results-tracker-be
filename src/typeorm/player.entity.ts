@@ -1,9 +1,9 @@
-import { PlayerRoleEnum } from '@app/player/types/PlayerRoleEnum';
 import { Column, Entity, ManyToOne, OneToMany, Unique } from 'typeorm';
-import { User } from '@entities/user.entity';
-import { Room } from '@entities/room.entity';
-import { Exchange } from '@app/typeorm/exchange.entity';
-import { BaseEntity } from '@entities/base.entity';
+import { User } from './user.entity';
+import { Room } from './room.entity';
+import { Exchange } from './exchange.entity';
+import { BaseEntity } from './base.entity';
+import { PlayerRoleEnum } from '../player/types/PlayerRoleEnum';
 
 @Entity()
 @Unique(['user', 'room'])

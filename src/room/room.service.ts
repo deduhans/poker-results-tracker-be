@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -25,6 +26,8 @@ import { ExchangeService } from '@app/exchange/exchange.service';
 import { CreateExchangeDto } from '@app/exchange/types/CreateExchangeDto';
 import { ExchangeDirectionEnum } from '@app/exchange/types/ExchangeDirectionEnum';
 import * as currencyJs from 'currency.js';
+import { CurrencyEnum } from './types/CurrencyEnum';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class RoomService {
@@ -37,9 +40,30 @@ export class RoomService {
     @Inject(ExchangeService) private readonly exchangeService: ExchangeService,
   ) { }
 
-  async getAll(): Promise<RoomDto[]> {
-    this.logger.log('Fetching all rooms');
-    const rooms: Room[] = await this.roomRepository.find();
+  /**
+   * Retrieves all visible rooms and rooms where the user is a player
+   * @param userId Optional current user ID to include their invisible rooms
+   * @returns A list of visible rooms and rooms where the user is a player
+   */
+  async getAll(userId?: number): Promise<RoomDto[]> {
+    // Start with a query builder for all rooms
+    const queryBuilder = this.roomRepository
+      .createQueryBuilder('room')
+      .leftJoinAndSelect('room.players', 'player')
+      .leftJoinAndSelect('player.user', 'user');
+
+    // If user ID is provided, get visible rooms OR rooms where the user is a player
+    if (userId) {
+      queryBuilder.where('room.isVisible = :isVisible OR player.user.id = :userId', {
+        isVisible: true,
+        userId,
+      });
+    } else {
+      // Otherwise, just get visible rooms
+      queryBuilder.where('room.isVisible = :isVisible', { isVisible: true });
+    }
+
+    const rooms = await queryBuilder.getMany();
     return plainToInstance(RoomDto, rooms);
   }
 
@@ -49,7 +73,27 @@ export class RoomService {
     try {
       const host: User = await this.userService.getUserById(createRoomDto.hostId);
 
-      const instance: Room = await this.roomRepository.create(createRoomDto);
+      // Generate access token for all rooms
+      const accessToken = this.generateAccessToken();
+
+      // Prepare room data with new fields
+      const roomData = {
+        name: createRoomDto.name,
+        exchange: createRoomDto.exchange,
+        currency: createRoomDto.currency || CurrencyEnum.USD, // Default to USD if not provided
+        baseBuyIn: createRoomDto.baseBuyIn || 50, // Default to 50 if not provided
+        isVisible: createRoomDto.isVisible === undefined ? true : createRoomDto.isVisible, // Default to true if not provided
+        roomKey: createRoomDto.roomKey || null, // Room key is now optional regardless of visibility
+        accessToken: accessToken, // Add access token for all rooms
+      };
+
+      // Validate room key format if provided
+      if (roomData.roomKey && !/^\d{4}$/.test(roomData.roomKey)) {
+        throw new BadRequestException('Room key must be exactly 4 digits');
+      }
+
+      // Create the room entity with the correct typing
+      const instance: Room = this.roomRepository.create(roomData as Partial<Room>);
       const roomId: number = (await this.roomRepository.save(instance)).id;
 
       const playerInstance: CreatePlayerDto = {
@@ -60,7 +104,7 @@ export class RoomService {
       const player = await this.playerService.createPlayer(playerInstance);
       await this.playerService.changeRole({ playerId: player.id, role: PlayerRoleEnum.Host });
 
-      const createdRoom = await this.findById(roomId);
+      const createdRoom = await this.findById(roomId, accessToken);
       this.logger.log(`Successfully created room with ID: ${roomId}`);
 
       return createdRoom;
@@ -69,23 +113,75 @@ export class RoomService {
       if (error instanceof NotFoundException) {
         throw new BadRequestException(`Host with ID ${createRoomDto.hostId} not found`);
       }
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new InternalServerErrorException('Failed to create room');
     }
   }
 
-  async findById(id: number): Promise<Room> {
-    this.logger.log(`Finding room by ID: ${id}`);
+  /**
+   * Find a room by its ID
+   * @param id The room ID
+   * @param accessToken Optional access token for invisible rooms
+   * @param userId Optional user ID to check if user is a player in the room
+   * @returns The found room
+   */
+  async findById(id: number, accessToken?: string, userId?: number): Promise<Room> {
     const room = await this.roomRepository.findOne({
-      where: { id: id },
-      relations: ['players', 'players.exchanges', 'players.user'],
+      where: { id },
+      relations: ['players', 'players.user'],
     });
 
     if (!room) {
-      this.logger.warn(`Room with ID ${id} not found`);
-      throw new NotFoundException(`Room with ID ${id} not found`);
+      throw new NotFoundException('Room not found');
+    }
+
+    // If the room is invisible, check if the user is a player or has a valid token
+    if (!room.isVisible) {
+      // Check if user is a player in the room
+      const isUserPlayer = userId && room.players.some(player => 
+        player.user && player.user.id === userId
+      );
+
+      // If user is not a player, then validate access token
+      if (!isUserPlayer) {
+        if (!accessToken || room.accessToken !== accessToken) {
+          throw new ForbiddenException('Access to this room is restricted');
+        }
+      }
     }
 
     return room;
+  }
+
+  async regenerateAccessToken(id: number, userId: number): Promise<string> {
+    const room = await this.roomRepository.findOne({
+      where: { id },
+      relations: ['players', 'players.user'],
+    });
+
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
+
+    // Check if the user is the host of the room
+    const isHost = room.players.some(
+      (player) => player.user?.id === userId && player.role === PlayerRoleEnum.Host,
+    );
+
+    if (!isHost) {
+      throw new ForbiddenException('Only the host can regenerate the access token');
+    }
+
+    // Generate a new access token
+    const newAccessToken = this.generateAccessToken();
+    room.accessToken = newAccessToken;
+
+    // Save the room with the new access token
+    await this.roomRepository.save(room);
+
+    return newAccessToken;
   }
 
   async close(id: number, playersResults: PlayerResultDto[], userId: number): Promise<Room> {
@@ -126,10 +222,53 @@ export class RoomService {
     await this.roomRepository.update({ id: id }, { status: RoomStatusEnum.Closed });
 
     this.logger.log(`Successfully closed room with ID: ${id}`);
-    return await this.findById(id);
+    return await this.findById(id, room.accessToken);
+  }
+
+  async validateRoomKey(roomId: number, roomKey: string, userId?: number): Promise<boolean> {
+    const room = await this.roomRepository.findOne({
+      where: { id: roomId },
+      relations: ['players', 'players.user'],
+    });
+
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
+
+    // If room doesn't have a key, no validation needed
+    if (!room.roomKey) {
+      return true;
+    }
+
+    // If user is a player in the room, they don't need to validate the key
+    if (userId && room.players.some(player => player.user && player.user.id === userId)) {
+      return true;
+    }
+
+    // Compare the provided key with the room's key
+    return room.roomKey === roomKey;
+  }
+
+  async isUserPlayerInRoom(roomId: number, userId: number): Promise<boolean> {
+    if (!userId) return false;
+
+    const room = await this.roomRepository.findOne({
+      where: { id: roomId },
+      relations: ['players', 'players.user'],
+    });
+
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
+
+    return room.players.some(player => player.user && player.user.id === userId);
   }
 
   private canUserCloseRoom(room: Room, userId: number): boolean {
+    return this.canUserManageRoom(room, userId);
+  }
+
+  private canUserManageRoom(room: Room, userId: number): boolean {
     // Check if user is the host
     const hostPlayer = room.players.find(player => player.role === PlayerRoleEnum.Host);
     const isHost = !!hostPlayer && !!hostPlayer.user && hostPlayer.user.id === userId;
@@ -154,6 +293,11 @@ export class RoomService {
     this.logger.log(`Checking if user ${userId} exists in room ${roomId}`);
     const room = await this.findById(roomId);
     return room.players.some((player) => player.user && player.user.id === userId);
+  }
+
+  // Generate a random access token
+  private generateAccessToken(): string {
+    return crypto.randomBytes(32).toString('hex');
   }
 
   private async calculateTotalBalance(playersResults: PlayerResultDto[]): Promise<string> {

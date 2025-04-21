@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsDate, IsEnum, IsInt, IsNotEmpty, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsDate, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
 import { RoomStatusEnum } from './RoomStatusEnum';
 import { PlayerDto } from '@app/player/types/PlayerDto';
+import { CurrencyEnum } from './CurrencyEnum';
 
 export class RoomDto {
   @ApiProperty()
@@ -18,7 +19,35 @@ export class RoomDto {
   exchange: number;
 
   @ApiProperty()
-  @IsEnum({ type: RoomStatusEnum })
+  @IsEnum(CurrencyEnum)
+  currency: CurrencyEnum;
+
+  @ApiProperty()
+  @IsInt()
+  baseBuyIn: number;
+
+  @ApiProperty()
+  @IsBoolean()
+  isVisible: boolean;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  @Length(4, 4)
+  roomKey?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  accessToken?: string;
+
+  @ApiProperty({ required: false })
+  @IsBoolean()
+  @IsOptional()
+  requiresKey?: boolean;
+
+  @ApiProperty()
+  @IsEnum(RoomStatusEnum)
   @IsNotEmpty()
   status: RoomStatusEnum;
 

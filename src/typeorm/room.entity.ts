@@ -1,7 +1,8 @@
 import { Column, Entity, OneToMany } from 'typeorm';
-import { Player } from '@entities/player.entity';
-import { BaseEntity } from '@entities/base.entity';
-import { RoomStatusEnum } from '@app/room/types/RoomStatusEnum';
+import { Player } from './player.entity';
+import { BaseEntity } from './base.entity';
+import { RoomStatusEnum } from '../room/types/RoomStatusEnum';
+import { CurrencyEnum } from '../room/types/CurrencyEnum';
 
 @Entity()
 export class Room extends BaseEntity {
@@ -13,6 +14,21 @@ export class Room extends BaseEntity {
 
   @Column({ type: 'int' })
   exchange: number;
+
+  @Column({ type: 'enum', enum: CurrencyEnum, default: CurrencyEnum.USD })
+  currency: CurrencyEnum;
+
+  @Column({ type: 'int', default: 50 })
+  baseBuyIn: number;
+
+  @Column({ type: 'boolean', default: true })
+  isVisible: boolean;
+
+  @Column({ type: 'varchar', length: 4, nullable: true })
+  roomKey: string;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  accessToken: string;
 
   @Column({ type: 'enum', enum: RoomStatusEnum, default: RoomStatusEnum.Opened })
   status: RoomStatusEnum;
