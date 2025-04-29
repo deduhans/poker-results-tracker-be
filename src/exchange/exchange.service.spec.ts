@@ -78,6 +78,7 @@ describe('ExchangeService', () => {
                 ...entity
               });
             }),
+            find: jest.fn().mockResolvedValue([mockExchange]),
           },
         },
         {
@@ -203,6 +204,59 @@ describe('ExchangeService', () => {
       jest.spyOn(roomRepository, 'findOne').mockResolvedValue(closedRoom);
 
       await expect(service.createExchange(createExchangeDto)).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getExchangesByRoomId', () => {
+    const roomId = 1;
+    const mockExchanges = [
+      {
+        ...mockExchange,
+        player: {
+          ...mockPlayer,
+          room: mockRoom
+        }
+      },
+      {
+        ...mockExchange,
+        id: 2,
+        player: {
+          ...mockPlayer,
+          room: mockRoom
+        }
+      }
+    ];
+
+    it('should return exchanges for a given room id', async () => {
+      jest.spyOn(exchangeRepository, 'find').mockResolvedValue(mockExchanges);
+
+      const result = await service.getTotalExchangesByRoomId(roomId);
+
+      expect(result).toEqual(mockExchanges);
+      expect(exchangeRepository.find).toHaveBeenCalledWith({
+        where: { player: { room: { id: roomId } } },
+        relations: ['player', 'player.room']
+      });
+    });
+
+    it('should return an empty array when no exchanges exist for the room', async () => {
+      jest.spyOn(exchangeRepository, 'find').mockResolvedValue([]);
+
+      const result = await service.getTotalExchangesByRoomId(roomId);
+
+      expect(result).toEqual([]);
+      expect(exchangeRepository.find).toHaveBeenCalledWith({
+        where: { player: { room: { id: roomId } } },
+        relations: ['player', 'player.room']
+      });
+    });
+
+    it('should return the total cash amount of exchanges for a given room id', async () => {
+      jest.spyOn(exchangeRepository, 'find').mockResolvedValue(mockExchanges);
+
+      const result = await service.getTotalExchangesByRoomId(roomId);
+
+      expect(result).toBeGreaterThan(0);
     });
   });
 });

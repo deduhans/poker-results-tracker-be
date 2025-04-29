@@ -18,7 +18,10 @@ export class PlayerService {
   ) { }
 
   async getPlayerById(id: number): Promise<Player> {
-    const player: Player | null = await this.playerRepository.findOneBy({ id: id });
+    const player: Player | null = await this.playerRepository.findOne({
+      where: { id: id },
+      relations: ['exchanges', 'room', 'user']
+    });
 
     if (!player) {
       throw new NotFoundException('Could not find player by id: ' + id);
@@ -38,16 +41,16 @@ export class PlayerService {
     }
 
     const instance: Player = await this.playerRepository.create(player);
-    const newPlayer: Player = await this.playerRepository.save(instance);
+    const savedPlayer: Player = await this.playerRepository.save(instance);
 
-    room.players.push(newPlayer);
+    room.players.push(savedPlayer);
     await this.roomRepository.save(room);
 
     if (player.userId) {
-      await this.assignToUser(newPlayer, player.userId);
+      await this.assignToUser(savedPlayer, player.userId);
     }
 
-    return newPlayer;
+    return this.getPlayerById(savedPlayer.id);
   }
 
   async changeRole(changePlayerRole: ChangePlayerRole): Promise<void> {

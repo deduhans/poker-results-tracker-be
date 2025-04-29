@@ -6,6 +6,7 @@ import { ExchangeDto } from '@app/exchange/types/ExchangeDto';
 import { plainToInstance } from 'class-transformer';
 import { AuthenticatedGuard } from '@app/auth/authenticated.guard';
 import { ExchangeDirectionEnum } from './types/ExchangeDirectionEnum';
+import currency from 'currency.js';
 
 @UseGuards(AuthenticatedGuard)
 @Controller('exchanges')
@@ -18,6 +19,9 @@ export class ExchangeController {
   @ApiResponse({ type: ExchangeDto })
   async createExchange(@Body() createExchange: CreateExchangeDto): Promise<ExchangeDto> {
     const exchange = await this.exchangeService.createExchange(createExchange);
-    return plainToInstance(ExchangeDto, exchange);
+    return plainToInstance(ExchangeDto, exchange, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true
+    });
   }
 }

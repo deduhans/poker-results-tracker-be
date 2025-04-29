@@ -85,6 +85,7 @@ export class RoomService {
         isVisible: createRoomDto.isVisible === undefined ? true : createRoomDto.isVisible, // Default to true if not provided
         roomKey: createRoomDto.roomKey || null, // Room key is now optional regardless of visibility
         accessToken: accessToken, // Add access token for all rooms
+        requiresKey: createRoomDto.roomKey ? true : false, // Set requiresKey flag based on whether roomKey exists
       };
 
       // Validate room key format if provided
@@ -130,7 +131,7 @@ export class RoomService {
   async findById(id: number, accessToken?: string, userId?: number): Promise<Room> {
     const room = await this.roomRepository.findOne({
       where: { id },
-      relations: ['players', 'players.user'],
+      relations: ['players', 'players.user', 'players.exchanges'],
     });
 
     if (!room) {
@@ -140,7 +141,7 @@ export class RoomService {
     // If the room is invisible, check if the user is a player or has a valid token
     if (!room.isVisible) {
       // Check if user is a player in the room
-      const isUserPlayer = userId && room.players.some(player => 
+      const isUserPlayer = userId && room.players.some(player =>
         player.user && player.user.id === userId
       );
 
@@ -151,6 +152,9 @@ export class RoomService {
         }
       }
     }
+
+    // Always ensure requiresKey is set properly based on whether roomKey exists
+    room.requiresKey = !!room.roomKey;
 
     return room;
   }
@@ -218,7 +222,7 @@ export class RoomService {
       );
     }
 
-    await this.processPayments(id, playersResults);
+    await this.processExchange(id, playersResults);
     await this.roomRepository.update({ id: id }, { status: RoomStatusEnum.Closed });
 
     this.logger.log(`Successfully closed room with ID: ${id}`);
@@ -269,18 +273,10 @@ export class RoomService {
   }
 
   private canUserManageRoom(room: Room, userId: number): boolean {
-    // Check if user is the host
-    const hostPlayer = room.players.find(player => player.role === PlayerRoleEnum.Host);
-    const isHost = !!hostPlayer && !!hostPlayer.user && hostPlayer.user.id === userId;
-
-    // Check if user is an admin
-    const adminPlayer = room.players.find(player =>
-      player.role === PlayerRoleEnum.Admin &&
-      player.user &&
-      player.user.id === userId
+    const isHost = this.isUserTheHost(room, userId);
+    const isAdmin = room.players.some(
+      (player) => player.user && player.user.id === userId && player.role === PlayerRoleEnum.Admin,
     );
-    const isAdmin = !!adminPlayer;
-
     return isHost || isAdmin;
   }
 
@@ -313,8 +309,8 @@ export class RoomService {
   private async calculateTotalBuyIn(players: Player[]): Promise<string> {
     let totalBuyIn = currencyJs(0);
 
-    players.forEach(player => {
-      player.exchanges.forEach(exchange => {
+    players?.forEach(player => {
+      player.exchanges?.forEach(exchange => {
         if (exchange.direction === ExchangeDirectionEnum.BuyIn) {
           totalBuyIn = totalBuyIn.add(exchange.cashAmount);
         } else if (exchange.direction === ExchangeDirectionEnum.CashOut) {
@@ -326,7 +322,7 @@ export class RoomService {
     return totalBuyIn.toString();
   }
 
-  private async processPayments(id: number, playersResults: PlayerResultDto[]): Promise<void> {
+  private async processExchange(id: number, playersResults: PlayerResultDto[]): Promise<void> {
     this.logger.log(`Processing exchanges for room ${id}`);
     try {
       await Promise.all(
@@ -341,8 +337,8 @@ export class RoomService {
         }),
       );
     } catch (error) {
-      this.logger.error(`Error processing payments: ${error.message}`);
-      throw new BadRequestException('Error processing payments');
+      this.logger.error(`Error processing exchanges: ${error.message}`);
+      throw new BadRequestException('Error processing exchanges');
     }
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Patch, Post, Request, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Body, Controller, Param, Patch, Post, Request, UseGuards, ParseIntPipe, Get } from '@nestjs/common';
 import { PlayerService } from '@app/player/player.service';
 import {
   ApiBadRequestResponse,
@@ -19,7 +19,7 @@ import { AuthenticatedGuard } from '@app/auth/authenticated.guard';
 @UseGuards(AuthenticatedGuard)
 @Controller('players')
 export class PlayerController {
-  constructor(private readonly playerService: PlayerService) {}
+  constructor(private readonly playerService: PlayerService) { }
 
   @Post()
   @ApiOperation({ summary: 'Create a new player in a room' })
@@ -39,7 +39,32 @@ export class PlayerController {
   })
   async createPlayer(@Body() player: CreatePlayerDto): Promise<PlayerDto> {
     const newPlayer: Player = await this.playerService.createPlayer(player);
-    return plainToInstance(PlayerDto, newPlayer, { excludeExtraneousValues: true });
+    // Transform the entity to DTO with relations
+    return plainToInstance(PlayerDto, newPlayer, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true
+    });
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a player by ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Player successfully retrieved',
+    type: PlayerDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Player not found',
+  })
+  @ApiForbiddenResponse({
+    description: 'User is not authenticated',
+  })
+  async getPlayerById(@Param('id', ParseIntPipe) id: number): Promise<PlayerDto> {
+    const player: Player = await this.playerService.getPlayerById(id);
+    return plainToInstance(PlayerDto, player, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true
+    });
   }
 
   @Patch(':id/assign')

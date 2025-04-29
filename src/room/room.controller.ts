@@ -32,8 +32,7 @@ export class RoomController {
     @Query('key') roomKey?: string
   ): Promise<RoomDto> {
     const userId = req.user?.userId;
-    
-    // Validate room key if provided, passing the user ID to check if they're a player
+
     if (roomKey) {
       const isValidKey = await this.roomService.validateRoomKey(id, roomKey, userId);
       if (!isValidKey) {
@@ -41,14 +40,11 @@ export class RoomController {
       }
     }
 
-    // Pass the userId to the findById method
     const room: Room = await this.roomService.findById(id, accessToken, userId);
-    
-    // If room has a key and no key was provided, but the user is a player, proceed
+
     if (room.roomKey && !roomKey) {
       const isUserPlayer = await this.roomService.isUserPlayerInRoom(id, userId);
-      
-      // If the user is not a player, indicate the room requires a key
+
       if (!isUserPlayer) {
         return {
           id: room.id,
@@ -56,8 +52,12 @@ export class RoomController {
         } as any;
       }
     }
-    
-    return plainToInstance(RoomDto, room);
+
+    // Transform the entity to DTO with all nested relations
+    return plainToInstance(RoomDto, room, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true
+    });
   }
 
   @Post()
@@ -69,7 +69,10 @@ export class RoomController {
   ): Promise<RoomDto> {
     // We don't need to pass userId to the create method - just use the DTO
     const room: Room = await this.roomService.create(createRoomDto);
-    return plainToInstance(RoomDto, room);
+    return plainToInstance(RoomDto, room, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true
+    });
   }
 
   @Put('close/:id')
@@ -85,7 +88,7 @@ export class RoomController {
     @Query('key') roomKey?: string
   ): Promise<RoomDto> {
     const userId = req.user.userId;
-    
+
     // Validate room key if provided, passing the user ID to check if they're a player
     if (roomKey) {
       const isValidKey = await this.roomService.validateRoomKey(id, roomKey, userId);
@@ -93,9 +96,12 @@ export class RoomController {
         throw new ForbiddenException('Invalid room key');
       }
     }
-    
+
     const room: Room = await this.roomService.close(id, playersResults, userId);
-    return plainToInstance(RoomDto, room);
+    return plainToInstance(RoomDto, room, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true
+    });
   }
 
   @Put(':id/regenerate-token')

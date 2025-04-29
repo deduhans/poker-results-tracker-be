@@ -52,12 +52,51 @@ export class ExchangeService {
       cashAmount = currencyJs(amount).divide(room.exchange).toString();
     }
 
+    const total = await this.getTotalExchangesByRoomId(roomId);
+
+    if (type === ExchangeDirectionEnum.CashOut && total.subtract(currencyJs(cashAmount)).value < 0) {
+      throw new BadRequestException('Total buy-in is less than cash-out');
+    }
+
     const exchange = new Exchange();
     exchange.player = player;
     exchange.direction = type;
     exchange.chipAmount = parseFloat(chipAmount);
     exchange.cashAmount = parseFloat(cashAmount);
 
-    return this.exchangeRepository.save(exchange);
+    const savedExchange = await this.exchangeRepository.save(exchange);
+    const createdExchange = await this.findById(savedExchange.id);
+
+    return createdExchange;
+  }
+
+  async findById(id: number): Promise<Exchange> {
+    const exchange = await this.exchangeRepository.findOne({
+      where: { id },
+      relations: ['player']
+    });
+
+    if (!exchange) {
+      throw new NotFoundException(`Could not find exchange with id: ${id}`);
+    }
+
+    return exchange;
+  }
+
+  async getTotalExchangesByRoomId(roomId: number): Promise<currencyJs> {
+    const exchanges = await this.exchangeRepository.find({
+      where: { player: { room: { id: roomId } } },
+      relations: ['player', 'player.room']
+    });
+
+    const total = exchanges.reduce((acc, exchange) => {
+      if (exchange.direction === ExchangeDirectionEnum.BuyIn) {
+        return acc.add(currencyJs(exchange.cashAmount));
+      } else {
+        return acc.subtract(currencyJs(exchange.cashAmount));
+      }
+    }, currencyJs(0));
+
+    return total;
   }
 }
