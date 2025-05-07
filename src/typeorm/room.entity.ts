@@ -24,14 +24,8 @@ export class Room extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   isVisible: boolean;
 
-  @Column({ type: 'varchar', length: 4, nullable: true })
-  roomKey: string;
-
   @Column({ type: 'varchar', length: 64, nullable: true })
   accessToken: string;
-
-  @Column({ type: 'boolean', default: false })
-  requiresKey: boolean;
 
   @Column({ type: 'enum', enum: RoomStatusEnum, default: RoomStatusEnum.Opened })
   status: RoomStatusEnum;

@@ -52,14 +52,13 @@ export class RoomService {
       .leftJoinAndSelect('room.players', 'player')
       .leftJoinAndSelect('player.user', 'user');
 
-    // If user ID is provided, get visible rooms OR rooms where the user is a player
+    // If user ID is provided, only get rooms where the user is a player
     if (userId) {
-      queryBuilder.where('room.isVisible = :isVisible OR player.user.id = :userId', {
-        isVisible: true,
+      queryBuilder.where('player.user.id = :userId', {
         userId,
       });
     } else {
-      // Otherwise, just get visible rooms
+      // Otherwise, just get visible rooms (for non-authenticated users)
       queryBuilder.where('room.isVisible = :isVisible', { isVisible: true });
     }
 
@@ -83,15 +82,8 @@ export class RoomService {
         currency: createRoomDto.currency || CurrencyEnum.USD, // Default to USD if not provided
         baseBuyIn: createRoomDto.baseBuyIn || 50, // Default to 50 if not provided
         isVisible: createRoomDto.isVisible === undefined ? true : createRoomDto.isVisible, // Default to true if not provided
-        roomKey: createRoomDto.roomKey || null, // Room key is now optional regardless of visibility
         accessToken: accessToken, // Add access token for all rooms
-        requiresKey: createRoomDto.roomKey ? true : false, // Set requiresKey flag based on whether roomKey exists
       };
-
-      // Validate room key format if provided
-      if (roomData.roomKey && !/^\d{4}$/.test(roomData.roomKey)) {
-        throw new BadRequestException('Room key must be exactly 4 digits');
-      }
 
       // Create the room entity with the correct typing
       const instance: Room = this.roomRepository.create(roomData as Partial<Room>);
@@ -138,23 +130,17 @@ export class RoomService {
       throw new NotFoundException('Room not found');
     }
 
-    // If the room is invisible, check if the user is a player or has a valid token
-    if (!room.isVisible) {
-      // Check if user is a player in the room
-      const isUserPlayer = userId && room.players.some(player =>
-        player.user && player.user.id === userId
-      );
+    // Check if user is a player in the room
+    const isUserPlayer = userId && room.players.some(player =>
+      player.user && player.user.id === userId
+    );
 
-      // If user is not a player, then validate access token
-      if (!isUserPlayer) {
-        if (!accessToken || room.accessToken !== accessToken) {
-          throw new ForbiddenException('Access to this room is restricted');
-        }
+    // If user is not a player, they must have a valid access token to access the room
+    if (!isUserPlayer) {
+      if (!accessToken || room.accessToken !== accessToken) {
+        throw new ForbiddenException('Access to this room is restricted. You need an access token or to be a player in this room.');
       }
     }
-
-    // Always ensure requiresKey is set properly based on whether roomKey exists
-    room.requiresKey = !!room.roomKey;
 
     return room;
   }
@@ -190,10 +176,10 @@ export class RoomService {
 
   async close(id: number, playersResults: PlayerResultDto[], userId: number): Promise<Room> {
     this.logger.log(`Attempting to close room with ID: ${id} by user ID: ${userId}`);
-    const room = await this.findById(id);
+    const room = await this.findById(id, undefined, userId);
 
     // Check if the user attempting to close the room is the host or an admin
-    const canCloseRoom = this.canUserCloseRoom(room, userId);
+    const canCloseRoom = this.canUserManageRoom(room, userId);
     if (!canCloseRoom) {
       this.logger.warn(`User ${userId} attempted to close room ${id} but does not have permission`);
       throw new ForbiddenException('Only the host or an admin can close the room');
@@ -229,30 +215,6 @@ export class RoomService {
     return await this.findById(id, room.accessToken);
   }
 
-  async validateRoomKey(roomId: number, roomKey: string, userId?: number): Promise<boolean> {
-    const room = await this.roomRepository.findOne({
-      where: { id: roomId },
-      relations: ['players', 'players.user'],
-    });
-
-    if (!room) {
-      throw new NotFoundException('Room not found');
-    }
-
-    // If room doesn't have a key, no validation needed
-    if (!room.roomKey) {
-      return true;
-    }
-
-    // If user is a player in the room, they don't need to validate the key
-    if (userId && room.players.some(player => player.user && player.user.id === userId)) {
-      return true;
-    }
-
-    // Compare the provided key with the room's key
-    return room.roomKey === roomKey;
-  }
-
   async isUserPlayerInRoom(roomId: number, userId: number): Promise<boolean> {
     if (!userId) return false;
 
@@ -268,8 +230,10 @@ export class RoomService {
     return room.players.some(player => player.user && player.user.id === userId);
   }
 
-  private canUserCloseRoom(room: Room, userId: number): boolean {
-    return this.canUserManageRoom(room, userId);
+  async isUserExistsInRoom(roomId: number, userId: number): Promise<boolean> {
+    this.logger.log(`Checking if user ${userId} exists in room ${roomId}`);
+    const room = await this.findById(roomId);
+    return room.players.some((player) => player.user && player.user.id === userId);
   }
 
   private canUserManageRoom(room: Room, userId: number): boolean {
@@ -283,12 +247,6 @@ export class RoomService {
   private isUserTheHost(room: Room, userId: number): boolean {
     const hostPlayer = room.players.find(player => player.role === PlayerRoleEnum.Host);
     return !!hostPlayer && !!hostPlayer.user && hostPlayer.user.id === userId;
-  }
-
-  async isUserExistsInRoom(roomId: number, userId: number): Promise<boolean> {
-    this.logger.log(`Checking if user ${userId} exists in room ${roomId}`);
-    const room = await this.findById(roomId);
-    return room.players.some((player) => player.user && player.user.id === userId);
   }
 
   // Generate a random access token

@@ -23,35 +23,14 @@ export class RoomController {
 
   @Get(':id')
   @ApiQuery({ name: 'token', required: false, description: 'Access token for invisible rooms' })
-  @ApiQuery({ name: 'key', required: false, description: 'Room key for password-protected rooms' })
   @ApiResponse({ status: 200, type: RoomDto })
   async findRoomById(
     @Param('id', ParseIntPipe) id: number,
     @Request() req,
     @Query('token') accessToken?: string,
-    @Query('key') roomKey?: string
   ): Promise<RoomDto> {
     const userId = req.user?.userId;
-
-    if (roomKey) {
-      const isValidKey = await this.roomService.validateRoomKey(id, roomKey, userId);
-      if (!isValidKey) {
-        throw new ForbiddenException('Invalid room key');
-      }
-    }
-
     const room: Room = await this.roomService.findById(id, accessToken, userId);
-
-    if (room.roomKey && !roomKey) {
-      const isUserPlayer = await this.roomService.isUserPlayerInRoom(id, userId);
-
-      if (!isUserPlayer) {
-        return {
-          id: room.id,
-          requiresKey: true
-        } as any;
-      }
-    }
 
     // Transform the entity to DTO with all nested relations
     return plainToInstance(RoomDto, room, {
@@ -77,7 +56,6 @@ export class RoomController {
 
   @Put('close/:id')
   @ApiQuery({ name: 'token', required: false, description: 'Access token for invisible rooms' })
-  @ApiQuery({ name: 'key', required: false, description: 'Room key for password-protected rooms' })
   @ApiBody({ type: [PlayerResultDto] })
   @ApiResponse({ status: 204, type: RoomDto })
   async closeRoom(
@@ -85,18 +63,8 @@ export class RoomController {
     @Request() req,
     @Body() playersResults: PlayerResultDto[],
     @Query('token') accessToken?: string,
-    @Query('key') roomKey?: string
   ): Promise<RoomDto> {
     const userId = req.user.userId;
-
-    // Validate room key if provided, passing the user ID to check if they're a player
-    if (roomKey) {
-      const isValidKey = await this.roomService.validateRoomKey(id, roomKey, userId);
-      if (!isValidKey) {
-        throw new ForbiddenException('Invalid room key');
-      }
-    }
-
     const room: Room = await this.roomService.close(id, playersResults, userId);
     return plainToInstance(RoomDto, room, {
       excludeExtraneousValues: true,

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsString, Min, Length, IsEnum, IsOptional, IsBoolean, Matches } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, Min, Length, IsEnum, IsOptional, IsBoolean } from 'class-validator';
 import { CurrencyEnum } from './CurrencyEnum';
 
 export class CreateRoomDto {
@@ -29,13 +29,6 @@ export class CreateRoomDto {
   @IsBoolean({ message: 'isVisible must be a boolean' })
   @IsOptional()
   isVisible?: boolean;
-
-  @ApiProperty({ description: 'Key required to join a room (4 digits)', example: '1234' })
-  @IsOptional()
-  @IsString({ message: 'Room key must be a string' })
-  @Length(4, 4, { message: 'Room key must be exactly 4 digits' })
-  @Matches(/^[0-9]{4}$/, { message: 'Room key must contain exactly 4 digits' })
-  roomKey?: string;
 
   @ApiProperty({ description: 'ID of the room host', example: 1 })
   @IsInt({ message: 'Host ID must be an integer' })
