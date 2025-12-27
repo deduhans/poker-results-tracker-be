@@ -61,8 +61,13 @@ async function bootstrap() {
   app.use(passport.session());
 
   // CORS Setup
+  const clientHost = process.env.CLIENT_HOST;
+  const clientPort = process.env.CLIENT_PORT;
+  const isHttps = clientPort === '443' || clientHost?.includes('netlify.app');
+  const protocol = isHttps ? 'https' : 'http';
+
   const corsOptions: CorsOptions = {
-    origin: [`http://${process.env.CLIENT_HOST}:${process.env.CLIENT_PORT}`],
+    origin: [`${protocol}://${clientHost}:${clientPort}`],
     credentials: true,
   };
   app.enableCors(corsOptions);
