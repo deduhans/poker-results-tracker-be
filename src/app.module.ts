@@ -21,11 +21,17 @@ import { HealthModule } from '@app/health/health.module';
         type: 'postgres',
         host: configService.get('POSTGRES_HOST'),
         port: configService.get<number>('POSTGRES_PORT') as number,
-        username: configService.get('POSTGRES_NAME'),
+        username: configService.get('POSTGRES_USER'),
         password: configService.get('POSTGRES_PASSWORD'),
         database: configService.get('POSTGRES_NAME'),
         entities: entities,
         synchronize: true,
+        ssl: true,
+        extra: {
+          ssl: {
+            rejectUnauthorized: false,
+          },
+        },
       }),
       inject: [ConfigService],
     }),
@@ -40,4 +46,4 @@ import { HealthModule } from '@app/health/health.module';
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule { }
