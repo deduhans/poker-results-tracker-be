@@ -1,8 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '@app/app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as session from 'express-session';
-import * as passport from 'passport';
 import { ValidationPipe } from '@nestjs/common';
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
@@ -33,34 +31,11 @@ async function bootstrap() {
     .setDescription('API for tracking poker game results')
     .setVersion('1.0')
     .addServer(`http://${process.env.NEST_HOST}:${process.env.NEST_PORT}/`, 'Local environment')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, options);
   SwaggerModule.setup('api', app, document);
-
-  // Session Setup
-  const sessionSecret = process.env.PASSPORT_SECRET;
-  if (!sessionSecret) {
-    throw new Error('PASSPORT_SECRET is required');
-  }
-
-  app.use(
-    session({
-      secret: sessionSecret,
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        maxAge: 5 * 60 * 60 * 1000, // 5 hours
-        secure: true, // Required for HTTPS
-        sameSite: 'none', // Required for cross-domain cookies
-        httpOnly: true,
-      },
-    }),
-  );
-
-  // Passport Setup
-  app.use(passport.initialize());
-  app.use(passport.session());
 
   // CORS Setup
   const clientHost = process.env.CLIENT_HOST;
@@ -68,9 +43,6 @@ async function bootstrap() {
   const isHttps = clientPort === '443' || (clientHost && clientHost.includes('netlify.app'));
   const protocol = isHttps ? 'https' : 'http';
 
-  console.log(`CORS Debug: protocol=${protocol}, clientHost=${clientHost}, clientPort=${clientPort}`);
-
-  // Don't include port for standard HTTPS (443) or HTTP (80)
   const originPort = (clientPort === '443' || clientPort === '80') ? '' : `:${clientPort}`;
   const corsOptions: CorsOptions = {
     origin: [`${protocol}://${clientHost}${originPort}`],
