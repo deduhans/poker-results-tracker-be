@@ -68,8 +68,10 @@ async function bootstrap() {
 
   console.log(`CORS Debug: protocol=${protocol}, clientHost=${clientHost}, clientPort=${clientPort}`);
 
+  // Don't include port for standard HTTPS (443) or HTTP (80)
+  const originPort = (clientPort === '443' || clientPort === '80') ? '' : `:${clientPort}`;
   const corsOptions: CorsOptions = {
-    origin: [`${protocol}://${clientHost}:${clientPort}`],
+    origin: [`${protocol}://${clientHost}${originPort}`],
     credentials: true,
   };
   app.enableCors(corsOptions);
@@ -80,7 +82,7 @@ async function bootstrap() {
     `Application is running on: http://${process.env.NEST_HOST}:${process.env.NEST_PORT}`,
   );
   console.log(
-    `CORS enabled for: http://${process.env.CLIENT_HOST}:${process.env.CLIENT_PORT}`,
+    `CORS enabled for: ${protocol}://${clientHost}${originPort}`,
   );
 }
 
