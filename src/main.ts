@@ -63,8 +63,10 @@ async function bootstrap() {
   // CORS Setup
   const clientHost = process.env.CLIENT_HOST;
   const clientPort = process.env.CLIENT_PORT;
-  const isHttps = clientPort === '443' || clientHost?.includes('netlify.app');
+  const isHttps = clientPort === '443' || (clientHost && clientHost.includes('netlify.app'));
   const protocol = isHttps ? 'https' : 'http';
+
+  console.log(`CORS Debug: protocol=${protocol}, clientHost=${clientHost}, clientPort=${clientPort}`);
 
   const corsOptions: CorsOptions = {
     origin: [`${protocol}://${clientHost}:${clientPort}`],
